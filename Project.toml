@@ -1,3 +1,8 @@
+name = "EncoderModelGen"
+uuid = "e5213632-2d12-443e-a840-e9f463057f13"
+authors = ["Adam Atanas <adamatanas@gmail.com>"]
+version = "0.1.0"
+
 [deps]
 EncoderModel = "42ff2c28-13f9-4ac3-bfdb-92395ca1401b"
 FlavellBase = "88015601-1e04-46e4-b006-ffd03bd63f42"
