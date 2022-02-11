@@ -1,6 +1,6 @@
 module EncoderModelGen
 
-using FlavellBase, Gen, EncoderModel
+using FlavellBase, Gen, EncoderModel, StatsBase
 include("model.jl")
 include("smc_fit.jl")
 
