@@ -1,4 +1,7 @@
 zstd = FlavellBase.standardize
+logistic(x,x0,k) = 1 / (1 + exp(-k * (x - x0)))
+leaky_logistic(x,x0,k,m) = logistic(x,x0,k) + m * (x - x0)
+lesser(x,x0) = leaky_logistic(x0,x,50,1e-3)
 
 @gen (static) function kernel_noewma(t::Int, y_prev::Float64, xs::Array{Float64}, v_0::Float64,
         (grad)(c1::Float64), (grad)(c2::Float64), (grad)(c3::Float64), (grad)(b::Float64), σ::Float64) # latent variables
