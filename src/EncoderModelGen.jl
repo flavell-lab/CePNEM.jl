@@ -1,16 +1,12 @@
 module EncoderModelGen
 
-using FlavellBase, Gen, EncoderModel, StatsBase
-include("model.jl")
-include("smc_fit.jl")
+using FlavellBase, Gen, StatsBase, HDF5, Statistics
+include("run_sbc.jl")
 
 export
-    # model.jl
-    v_model_init,
-    v_model,
-
-    # smc_fit.jl
-    make_constraints,
-    gaussian_swap_drift_update,
-    particle_filter
+    import_data,
+    hmc_jump_update,
+    particle_filter_incremental,
+    mcmc,
+    unfold_v_noewma
 end

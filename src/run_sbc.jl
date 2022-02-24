@@ -52,97 +52,67 @@ function import_data(path_h5)
     dict_
 end
 
-function v_model_init(raw_v)
-    v = zscore(raw_v)
-    xs = zeros(5, length(v))
-    xs[1,:] .= raw_v
-    xs[2,:] .= raw_v
-    xs[3,:] .= raw_v
-    xs[4,:] .= raw_v
-    xs[5,:] .= raw_v
-    
-    xs_s = zeros(5, length(v))
-    xs_s[1,:] .= v
-    xs_s[2,:] .= v
-    xs_s[3,:] .= v
-    xs_s[4,:] .= v
-    xs_s[5,:] .= v
-    
-    ps_0, ps_min, ps_max, list_idx_ps, list_idx_ps_reg = init_ps_model_nl6(xs, [1])
-    model = generate_model_nl6_partial(xs_s, list_idx_ps, 0, [1:800, 801:1600])
-    
-    return model, ps_0, ps_min, ps_max, xs_s
+
+"""
+In case of c2 near 0, propose massive jump in c1 and shift all other variables accordingly
+"""
+@gen function jump_c1(current_trace, neg)
+    vT_coeff = -2 * current_trace[:c1] * current_trace[:c3] / sqrt(current_trace[:c1]^2 + 1)
+    c_coeff = (1+current_trace[:c1]) * current_trace[:c3] / sqrt(current_trace[:c1]^2+1) + current_trace[:b]
+    c1 ~ normal(current_trace[:c1] * neg,1)
+    c3 ~ normal(vT_coeff/(-2*c1/sqrt(c1^2+1)), 1e-4)
+    b ~ normal(c_coeff - (1+c1)*c3/sqrt(c1^2+1), 1e-4)
 end
 
 
-function gaussian_swap_drift_update_noewma(tr)
-    # Attempt to exploit symmetries
-    (tr, _) = mh(tr, neg_c1_a, ())
-    
-    (tr, _) = mh(tr, neg_c2_a, ())
-    
-    (tr, _) = mh(tr, swap_c1_c2, ())
-    
-    # Update parameters one at a time, drifting
-    (tr, _) = mh(tr, drift_proposal_a, ())
-    
-    (tr, _) = mh(tr, drift_proposal_b, ())
-    
-    (tr, _) = mh(tr, drift_proposal_c1, ())
-    
-    (tr, _) = mh(tr, drift_proposal_c2, ())
-    
-    # Update the noise parameter
-    (tr, _) = mh(tr, select(:σ))
-    
-    # Return the updated trace
-    tr
-end;
-
-@gen function drift_proposal_a(current_trace)
-    a ~ normal(current_trace[:a], 0.2)
+"""
+In case of c1 near 0, propose massive jump in c3 to the prior and shift all other variables accordingly
+"""
+@gen function jump_c3(current_trace, neg)
+    c_coeff = (1+current_trace[:c1]) * current_trace[:c3] / sqrt(current_trace[:c1]^2+1) + current_trace[:b]
+    c3 ~ normal(current_trace[:c3] * neg, 1)
+    b ~ normal(c_coeff - (1+current_trace[:c1])*c3/sqrt(current_trace[:c1]^2+1), 1e-4)
 end
 
-@gen function drift_proposal_b(current_trace)
-    b ~ normal(current_trace[:b], 0.2)
-end
-
-@gen function drift_proposal_c1(current_trace)
-    c1 ~ normal(current_trace[:c1], 0.1)
-end
-
-@gen function drift_proposal_c2(current_trace)
-    c2 ~ normal(current_trace[:c2], 0.1)
-end
-
-@gen function neg_c1_a(current_trace)
-    c1 ~ normal(-current_trace[:c1], 0.1)
-    a ~ normal(-current_trace[:a], 0.1)
-end
-
-@gen function neg_c2_a(current_trace)
-    c2 ~ normal(-current_trace[:c2], 0.1)
-    a ~ normal(-current_trace[:a], 0.1)
-end
-
-@gen function swap_c1_c2(current_trace)
-    c1 ~ normal(current_trace[:c2], 0.1)
-    c2 ~ normal(current_trace[:c1], 0.1)
-end
+"""
+Use the fact that vT = (v < 0) and v are similar to propose effectively swapping the two variables
+Specifically, moves parameter values along the manifold where v = (μ_vT - vT) / σ_vT. 
+"""
+@gen function jump_all(current_trace, neg_c1, neg_c2, μ_vT, σ_vT)
+    curr_c1 = current_trace[:c1]
+    curr_c2 = current_trace[:c2]
+    curr_c3 = current_trace[:c3]
+    vT_coeff = (-2*curr_c1*curr_c3*σ_vT + 2*curr_c1*curr_c2 - (1+curr_c1)*curr_c2 - 2*curr_c1*curr_c2*μ_vT) / (sqrt(curr_c1^2+1) * σ_vT)
+    c_coeff = current_trace[:b] + ((1+curr_c1)*curr_c3) / sqrt(curr_c1^2+1) + ((1+curr_c1)*curr_c2*μ_vT)/(sqrt(curr_c1^2+1)*σ_vT)
     
-
-@gen function drift_proposal_c3(current_trace)
-    c3 ~ normal(current_trace[:c3], 0.1)
+    c1 ~ normal(current_trace[:c1] * neg_c1, 1)
+    c2 ~ normal(current_trace[:c2] * neg_c2, 1)
+    c3 ~ normal((-c2 + c1*c2 - 2*c1*c2*μ_vT - sqrt(c1^2+1)*σ_vT*vT_coeff)/(2*c1*σ_vT), 1e-4)
+    b ~ normal(c_coeff - ((1+c1)*c3+(1+c1)*c2*μ_vT/σ_vT)/sqrt(c1^2+1), 1e-4)
 end
 
-@gen function drift_proposal_λ(current_trace)
-    log_λ ~ normal(current_trace[:log_λ], 0.1)
+function hmc_jump_update(tr, μ_vT, σ_vT)
+    # apply HMC to the entire trace
+    (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b), eps=tr[:σ]/20)
+    
+    # apply "jump" transforms that attempt to exploit symmetries of the kernel
+    neg = rand([-1, 1])
+    (tr, accept) = mh(tr, jump_c1, (neg,))   
+    neg = rand([-1, 1])
+    (tr, accept) = mh(tr, jump_c3, (neg,))   
+    neg_c1 = rand([-1,1])
+    neg_c2 = rand([-1,1])
+    (tr, accept) = mh(tr, jump_all, (neg_c1, neg_c2, μ_vT, σ_vT))
+    
+    # update noise value
+    (tr, accept) = mh(tr, select(:σ))
+    
+    return tr
 end
 
-
-@gen (static) function kernel_noewma(t::Int, y_prev::Float64, xs::Array{Float64}, c1::Float64,
-        c2::Float64, c3::Float64, a::Float64, b::Float64, σ::Float64)
-    y ~ normal(a * (sin(c1) * xs[t] + cos(c1)) * (sin(c2) * (1 - 2 * (xs[t] < c3)) + cos(c2)) + b, σ)
+@gen (static) function kernel_noewma(t::Int, y_prev::Float64, xs::Array{Float64}, v_0::Float64,
+        (grad)(c1::Float64), (grad)(c2::Float64), (grad)(c3::Float64), (grad)(b::Float64), σ::Float64) # latent variables
+    y ~ normal(((c1+1)/sqrt(c1^2+1) - 2*c1/sqrt(c1^2+1) * lesser(xs[t], v_0)) * (c2 * xs[t] + c3) + b, σ)
     return y
 end
 
@@ -151,123 +121,141 @@ Gen.@load_generated_functions
 chain = Gen.Unfold(kernel_noewma)
 
 @gen (static) function unfold_v_noewma(t::Int, raw_v::Array{Float64})
-    m, ps_0, ps_min, ps_max, xs_s = v_model_init(raw_v)
-    xs = xs_s[1,:]
-   
-    c1 ~ uniform(ps_min[1], ps_max[1])
-    c2 ~ uniform(ps_min[2], ps_max[2])
-    c3 = ps_0[3]
-    a ~ normal(0,2)
+    v_0 = -mean(raw_v)/std(raw_v)
+    std_v = zstd(raw_v)
+
+    c1 ~ uniform(-pi/2, pi/2)
+    c2 ~ normal(0,1)
+    c3 ~ normal(0,1)
     b ~ normal(0,2)
-    σ ~ exponential(10.0)
-    
-    chain ~ chain(t, 0.0, xs, c1, c2, c3, a, b, σ)
-    return (c1, c2, c3, a, b, σ)
+    σ ~ exponential(1.0)
+
+    chain ~ chain(t, 0.0, std_v, v_0, c1, c2, c3, b, σ)
+    return 1
 end
 
 Gen.@load_generated_functions
 
-function unfold_particle_filter_incremental(num_particles::Int, raw_v::Vector{Float64}, ys::Vector{Float64}, num_samples::Int, num_steps::Int)
+function particle_filter_incremental(num_particles::Int, raw_v::Vector{Float64}, ys::Vector{Float64}, num_samples::Int, num_steps::Int)
+    μ_vT = mean(raw_v .< 0)
+    σ_vT = std(raw_v .< 0)
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
     state = Gen.initialize_particle_filter(unfold_v_noewma, (1,raw_v), init_obs, num_particles)
     for t=2:length(ys)
         if maybe_resample!(state, ess_threshold=num_particles/2)
-            Threads.@threads for i=1:num_particles
+            for i=1:num_particles
                 for step=1:num_steps
-                    state.traces[i] = gaussian_swap_drift_update_noewma(state.traces[i])
+                    state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT)
                 end
             end
         end
         obs = Gen.choicemap((:chain => t => :y, ys[t]))
-        Gen.particle_filter_step!(state, (t,raw_v), (UnknownChange(),), obs)
+        Gen.particle_filter_step!(state, (t,raw_v), (IntDiff(1), NoChange()), obs)
     end
     return Gen.sample_unweighted_traces(state, num_samples)
 end
 
-function unfold_particle_filter_simultaneous(num_particles::Int, raw_v::Vector{Float64}, ys::Vector{Float64}, num_samples::Int, num_steps::Int)
-    init_obs = Gen.choicemap()
-    max_t = length(raw_v)
-    for t=1:max_t
-        init_obs[:chain => t => :y] = ys[t]
-    end
-    state = Gen.initialize_particle_filter(unfold_v_noewma, (max_t,raw_v), init_obs, num_particles)
-    for t=1:num_steps
-        Threads.@threads for i=1:num_particles
-            state.traces[i] = gaussian_swap_drift_update_noewma(state.traces[i])
-        end
-        
-        maybe_resample!(state, ess_threshold=num_particles/2)
-    end
-    return Gen.sample_unweighted_traces(state, num_samples)
-end
-
-function unfold_gaussian_swap_drift_inference(raw_v, ys, n_iters)
+function mcmc(raw_v, ys, n_iters, max_t)
+    μ_vT = mean(raw_v .< 0)
+    σ_vT = std(raw_v .< 0)
     traces = Vector{Any}(undef, n_iters)
     init_obs = Gen.choicemap()
-    max_t = length(raw_v)
     for t=1:max_t
         init_obs[:chain => t => :y] = ys[t]
     end
     
     (traces[1], _) = generate(unfold_v_noewma, (max_t, raw_v), init_obs)
     for iter=2:n_iters
-        traces[iter] = gaussian_swap_drift_update_noewma(traces[iter-1])
+        traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT)
     end
     traces
 end
 
-n_params = 6
-burnin = 1000
+n_params = 5
+burnin = 500
 fit_uid = "2021-05-26-07"
-output_path = "/om2/user/aaatanas/gen_output/h5/$(ARGS[1]).h5"
+output_path = "/om2/user/aaatanas/gen_output_2/h5/$(ARGS[1]).h5"
 path_h5 = "/om2/user/aaatanas/processed_h5/$(fit_uid)-combined_data.h5"
 dict = import_data(path_h5)
 
-xs = dict["velocity"]
-n_obs = length(xs)
+n_obs = 300
+xs = dict["velocity"][1:n_obs]
 (trace, _) = Gen.generate(unfold_v_noewma, (n_obs, xs))
 ys = [trace[:chain => t => :y] for t=1:n_obs]
 
+h5open(output_path, "w") do f
+    f["ground_truth"] = [trace[:c1], trace[:c2], trace[:c3], trace[:b], trace[:σ]]
+end
+
 particles_5000 = zeros(255, n_params)
-@time particles = unfold_particle_filter_incremental(5000, xs, ys, 255, 1)
+@time particles = particle_filter_incremental(5000, xs, ys, 255, 1)
 for (i,p) in enumerate(particles)
-    particles_5000[i,:] .= get_retval(p)
+    particles_5000[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+end
+
+h5open(output_path, "r+") do f
+    f["particles_5000"] = particles_5000
 end
 
 particles_5000_10 = zeros(255, n_params)
-@time particles = unfold_particle_filter_incremental(5000, xs, ys, 255, 10)
+@time particles = particle_filter_incremental(5000, xs, ys, 255, 10)
 for (i,p) in enumerate(particles)
-    particles_5000_10[i,:] .= get_retval(p)
+    particles_5000_10[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+end
+
+h5open(output_path, "r+") do f
+    f["particles_5000_10"] = particles_5000_10
 end
 
 particles_1000 = zeros(63, n_params)
-@time particles = unfold_particle_filter_incremental(1000, xs, ys, 63, 1)
+@time particles = particle_filter_incremental(1000, xs, ys, 63, 1)
 for (i,p) in enumerate(particles)
-    particles_1000[i,:] .= get_retval(p)
+    particles_1000[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+end
+
+h5open(output_path, "r+") do f
+    f["particles_1000"] = particles_1000
 end
 
 particles_1000_10 = zeros(63, n_params)
-@time particles = unfold_particle_filter_incremental(1000, xs, ys, 63, 10)
+@time particles = particle_filter_incremental(1000, xs, ys, 63, 10)
 for (i,p) in enumerate(particles)
-    particles_1000_10[i,:] .= get_retval(p)
+    particles_1000_10[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+end
+
+h5open(output_path, "r+") do f
+    f["particles_1000_10"] = particles_1000_10
+end
+
+particles_1000_50 = zeros(63, n_params)
+@time particles = particle_filter_incremental(1000, xs, ys, 63, 50)
+for (i,p) in enumerate(particles)
+    particles_1000_10[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+end
+
+h5open(output_path, "r+") do f
+    f["particles_1000_50"] = particles_1000_10
 end
 
 mcmc_5000 = zeros(4095, n_params)
-@time traces = unfold_gaussian_swap_drift_inference(xs, ys, 5095)
+@time traces = mcmc(xs, ys, 4595, 300)
 for (i,t) in enumerate(traces)
     if i <= burnin
         continue
     end
-    mcmc_5000[i-burnin,:] .= get_retval(t)
+    mcmc_5000[i-burnin,:] .= [t[:c1], t[:c2], t[:c3], t[:b], t[:σ]]
 end
 
-h5open(output_path, "w") do f
-    f["particles_5000"] = particles_5000
-    f["particles_5000_10"] = particles_5000_10
-    f["particles_1000"] = particles_1000
-    f["particles_1000_10"] = particles_1000_10
+h5open(output_path, "r+") do f
     f["mcmc_5000"] = mcmc_5000
-    f["ground_truth"] = collect(get_retval(trace))
 end
 
+mcmc_restart_63 = zeros(63, n_params)
+@time for i=1:63
+    t = mcmc(xs, ys, burnin+1, 300)[end]
+    mcmc_restart_63[i,:] .= [t[:c1], t[:c2], t[:c3], t[:b], t[:σ]]
+end
 
+h5open(output_path, "r+") do f
+    f["mcmc_restart_63"] = mcmc_restart_63
+end
