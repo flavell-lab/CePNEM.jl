@@ -1,7 +1,14 @@
 module EncoderModelGen
 
-using FlavellBase, Gen, StatsBase, HDF5, Statistics
-include("run_sbc.jl")
+using Gen
+using FlavellBase
+using HDF5
+using Statistics
+using StatsBase
+
+include("fit.jl")
+include("model.jl")
+include("data.jl")
 
 export
     import_data,
