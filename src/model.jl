@@ -59,7 +59,7 @@ Gen.@load_generated_functions
 
 function get_free_params(trace; use_ewma=true)
     if use_ewma
-        return [trace[:c1], trace[:c2], trace[:c3], trace[:y0], trace[:s], trace[:b], trace[:σ]]
+        return [trace[:c1], trace[:c2], trace[:c3], trace[:y0], trace[:s0], trace[:b], trace[:σ]]
     else
         return [trace[:c1], trace[:c2], trace[:c3], trace[:b], trace[:σ]]
     end
