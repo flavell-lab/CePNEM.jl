@@ -13,13 +13,13 @@ xs = dict["velocity"][1:n_obs]
 ys = [trace[:chain => t => :y] for t=1:n_obs]
 
 h5open(output_path, "w") do f
-    f["ground_truth"] = [trace[:c1], trace[:c2], trace[:c3], trace[:b], trace[:σ]]
+    f["ground_truth"] = [trace[:c1], trace[:c2], trace[:c3], trace[:y0], trace[:s], trace[:b], trace[:σ]]
 end
 
 particles_5000 = zeros(255, n_params)
 @time particles = particle_filter_incremental(5000, xs, ys, 255, 1)
 for (i,p) in enumerate(particles)
-    particles_5000[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+    particles_5000[i,:] .= [p[:c1], p[:c2], p[:c3], p[:y0], p[:s], p[:b], p[:σ]]
 end
 
 h5open(output_path, "r+") do f
@@ -30,7 +30,7 @@ end
 particles_1000 = zeros(63, n_params)
 @time particles = particle_filter_incremental(1000, xs, ys, 63, 1)
 for (i,p) in enumerate(particles)
-    particles_1000[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+    particles_1000[i,:] .= [p[:c1], p[:c2], p[:c3], p[:y0], p[:s], p[:b], p[:σ]]
 end
 
 h5open(output_path, "r+") do f
@@ -40,7 +40,7 @@ end
 particles_1000_10 = zeros(63, n_params)
 @time particles = particle_filter_incremental(1000, xs, ys, 63, 10)
 for (i,p) in enumerate(particles)
-    particles_1000_10[i,:] .= [p[:c1], p[:c2], p[:c3], p[:b], p[:σ]]
+    particles_1000_10[i,:] .= [p[:c1], p[:c2], p[:c3], p[:y0], p[:s], p[:b], p[:σ]]
 end
 
 h5open(output_path, "r+") do f
@@ -49,11 +49,11 @@ end
 
 mcmc_5000 = zeros(4095, n_params)
 @time traces = mcmc(xs, ys, 4595, 300)
-for (i,t) in enumerate(traces)
+for (i,p) in enumerate(traces)
     if i <= burnin
         continue
     end
-    mcmc_5000[i-burnin,:] .= [t[:c1], t[:c2], t[:c3], t[:b], t[:σ]]
+    mcmc_5000[i-burnin,:] .= [p[:c1], p[:c2], p[:c3], p[:y0], p[:s], p[:b], p[:σ]]
 end
 
 h5open(output_path, "r+") do f
@@ -62,8 +62,8 @@ end
 
 mcmc_restart_63 = zeros(63, n_params)
 @time for i=1:63
-    t = mcmc(xs, ys, burnin+1, 300)[end]
-    mcmc_restart_63[i,:] .= [t[:c1], t[:c2], t[:c3], t[:b], t[:σ]]
+    p = mcmc(xs, ys, burnin+1, 300)[end]
+    mcmc_restart_63[i,:] .= [p[:c1], p[:c2], p[:c3], p[:y0], p[:s], p[:b], p[:σ]]
 end
 
 h5open(output_path, "r+") do f
