@@ -13,13 +13,13 @@ xs = dict["velocity"][1:n_obs]
 ys = [trace[:chain => t => :y] for t=1:n_obs]
 
 h5open(output_path, "w") do f
-    f["ground_truth"] = get_params(trace)
+    f["ground_truth"] = get_free_params(trace)
 end
 
 particles_5000 = zeros(255, n_params)
 @time particles = particle_filter_incremental(5000, xs, ys, 255, 1)
 for (i,p) in enumerate(particles)
-    particles_5000[i,:] .= get_params(p)
+    particles_5000[i,:] .= get_free_params(p)
 end
 
 h5open(output_path, "r+") do f
@@ -30,7 +30,7 @@ end
 particles_1000 = zeros(63, n_params)
 @time particles = particle_filter_incremental(1000, xs, ys, 63, 1)
 for (i,p) in enumerate(particles)
-    particles_1000[i,:] .= get_params(p)
+    particles_1000[i,:] .= get_free_params(p)
 end
 
 h5open(output_path, "r+") do f
@@ -40,7 +40,7 @@ end
 particles_1000_10 = zeros(63, n_params)
 @time particles = particle_filter_incremental(1000, xs, ys, 63, 10)
 for (i,p) in enumerate(particles)
-    particles_1000_10[i,:] .= get_params(p)
+    particles_1000_10[i,:] .= get_free_params(p)
 end
 
 h5open(output_path, "r+") do f
@@ -53,7 +53,7 @@ for (i,p) in enumerate(traces)
     if i <= burnin
         continue
     end
-    mcmc_5000[i-burnin,:] .= get_params(p)
+    mcmc_5000[i-burnin,:] .= get_free_params(p)
 end
 
 h5open(output_path, "r+") do f
@@ -63,7 +63,7 @@ end
 mcmc_restart_63 = zeros(63, n_params)
 @time for i=1:63
     p = mcmc(xs, ys, burnin+1, 300)[end]
-    mcmc_restart_63[i,:] .= get_params(p)
+    mcmc_restart_63[i,:] .= get_free_params(p)
 end
 
 h5open(output_path, "r+") do f
