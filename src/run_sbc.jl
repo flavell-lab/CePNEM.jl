@@ -1,6 +1,6 @@
 Gen.@load_generated_functions
 
-n_params = 5
+n_params = 7
 burnin = 500
 fit_uid = "2021-05-26-07"
 output_path = "/om2/user/aaatanas/gen_output_ewma/h5/$(ARGS[1]).h5"
