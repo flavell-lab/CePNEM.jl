@@ -11,9 +11,16 @@ include("model.jl")
 include("data.jl")
 
 export
+    # data.jl
     import_data,
+
+    # model.jl
+    unfold_v_noewma,
+    unfold_v,
+
+    # fit.jl
     hmc_jump_update,
+    hmc_jump_update_noewma,
     particle_filter_incremental,
-    mcmc,
-    unfold_v_noewma
+    mcmc
 end
