@@ -13,7 +13,7 @@ end
 
 @gen (static) function kernel_v(t::Int, y_prev::Float64, xs::Array{Float64}, v_0::Float64,
         (grad)(c1::Float64), (grad)(c2::Float64), (grad)(c3::Float64), (grad)(s::Float64), (grad)(b::Float64), σ::Float64) # latent variables
-    y ~ normal(((c1+1)/sqrt(c1^2+1) - 2*c1/sqrt(c1^2+1) * lesser(xs[t], v_0)) * (c2 * xs[t] + c3) / (s_mult*s+1) + (y_prev - b) * s_mult*s / (s_mult*s+1) + b, σ * sqrt(2*s_mult*s+1)/(s_mult*s+1))
+    y ~ normal(((c1+1)/sqrt(c1^2+1) - 2*c1/sqrt(c1^2+1) * lesser(xs[t], v_0)) * (c2 * xs[t] + c3) / (S_MULT*s+1) + (y_prev - b) * S_MULT*s / (S_MULT*s+1) + b, σ * sqrt(2*S_MULT*s+1)/(S_MULT*s+1))
     return y
 end
 
@@ -45,7 +45,7 @@ end
     c2 ~ normal(0,1)
     c3 ~ normal(0,1)
     y0 ~ normal(0,1)
-    s ~ exponential(10.0/s_mult)
+    s ~ exponential(10.0/S_MULT)
     b ~ normal(0,2)
     σ ~ exponential(10.0)
     
