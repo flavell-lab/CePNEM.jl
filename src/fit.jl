@@ -36,7 +36,7 @@ Specifically, moves parameter values along the manifold where v = (μ_vT - vT) /
     b ~ normal(c_coeff - ((1+c1)*c3+(1+c1)*c2*μ_vT/σ_vT)/sqrt(c1^2+1), 1e-4)
 end
 
-function hmc_jump_update(tr, μ_vT, σ_vT)
+function hmc_jump_update_noewma(tr, μ_vT, σ_vT)
     # apply HMC to the entire trace
     (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b), eps=tr[:σ]/20)
     
@@ -55,16 +55,50 @@ function hmc_jump_update(tr, μ_vT, σ_vT)
     return tr
 end
 
-function particle_filter_incremental(num_particles::Int, raw_v::Vector{Float64}, ys::Vector{Float64}, num_samples::Int, num_steps::Int)
+@gen function drift_y0(current_trace)
+    y0 ~ normal(current_trace[:y0], 0.5)
+end
+
+function hmc_jump_update(tr, μ_vT, σ_vT)
+    # update y0
+    (tr, accept) = mh(tr, drift_y0, ())
+
+    # apply HMC to all other parameters
+    (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s), eps=tr[:σ]/20)
+    
+    # apply "jump" transforms that attempt to exploit symmetries of the kernel
+    neg = rand([-1, 1])
+    (tr, accept) = mh(tr, jump_c1, (neg,))   
+    neg = rand([-1, 1])
+    (tr, accept) = mh(tr, jump_c3, (neg,))   
+    neg_c1 = rand([-1,1])
+    neg_c2 = rand([-1,1])
+    (tr, accept) = mh(tr, jump_all, (neg_c1, neg_c2, μ_vT, σ_vT))
+    
+    # update noise value
+    (tr, accept) = mh(tr, select(:σ))
+    
+    return tr
+end
+
+function particle_filter_incremental(num_particles::Int, raw_v::Vector{Float64}, ys::Vector{Float64}, num_samples::Int, num_steps::Int; use_ewma=true)
     μ_vT = mean(raw_v .< 0)
     σ_vT = std(raw_v .< 0)
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
-    state = Gen.initialize_particle_filter(unfold_v_noewma, (1,raw_v), init_obs, num_particles)
+    if use_ewma
+        state = Gen.initialize_particle_filter(unfold_v, (1,raw_v), init_obs, num_particles)
+    else
+        state = Gen.initialize_particle_filter(unfold_v_noewma, (1,raw_v), init_obs, num_particles)
+    end
     for t=2:length(ys)
         if maybe_resample!(state, ess_threshold=num_particles/2)
             for i=1:num_particles
                 for step=1:num_steps
-                    state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT)
+                    if use_ewma
+                        state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT)
+                    else
+                        state.traces[i] = hmc_jump_update_noewma(state.traces[i], μ_vT, σ_vT)
+                    end
                 end
             end
         end
@@ -74,7 +108,7 @@ function particle_filter_incremental(num_particles::Int, raw_v::Vector{Float64},
     return Gen.sample_unweighted_traces(state, num_samples)
 end
 
-function mcmc(raw_v, ys, n_iters, max_t)
+function mcmc(raw_v, ys, n_iters, max_t; use_ewma=true)
     μ_vT = mean(raw_v .< 0)
     σ_vT = std(raw_v .< 0)
     traces = Vector{Any}(undef, n_iters)
@@ -83,9 +117,17 @@ function mcmc(raw_v, ys, n_iters, max_t)
         init_obs[:chain => t => :y] = ys[t]
     end
     
-    (traces[1], _) = generate(unfold_v_noewma, (max_t, raw_v), init_obs)
+    if use_ewma
+        (traces[1], _) = generate(unfold_v, (max_t, raw_v), init_obs)
+    else
+        (traces[1], _) = generate(unfold_v_noewma, (max_t, raw_v), init_obs)
+    end
     for iter=2:n_iters
-        traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT)
+        if use_ewma
+            traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT)
+        else
+            traces[iter] = hmc_jump_update_noewma(traces[iter-1], μ_vT, σ_vT)
+        end
     end
     traces
 end
