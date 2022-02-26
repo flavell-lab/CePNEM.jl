@@ -64,13 +64,7 @@ function hmc_jump_update(tr, μ_vT, σ_vT)
     (tr, accept) = mh(tr, drift_y0, ())
 
     # apply HMC to all other parameters
-    try
-        (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s), eps=tr[:σ]/20)
-    catch e
-        @warn("HMC crashed. Current s value: $(tr[:s]). Error message: $(e)")
-        (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b), eps=tr[:σ]/20)
-        (tr, accept) = mh(tr, select(:s))
-    end
+    (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s0), eps=tr[:σ]/20)
     
     # apply "jump" transforms that attempt to exploit symmetries of the kernel
     neg = rand([-1, 1])
