@@ -17,7 +17,8 @@ export
     # model.jl
     unfold_v_noewma,
     unfold_v,
-
+    S_MULT,
+    
     # fit.jl
     hmc_jump_update,
     hmc_jump_update_noewma,
