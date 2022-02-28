@@ -9,6 +9,7 @@ using StatsBase
 include("fit.jl")
 include("model.jl")
 include("data.jl")
+include("sbc_tests.jl")
 
 export
     # data.jl
@@ -26,5 +27,9 @@ export
     hmc_jump_update,
     hmc_jump_update_noewma,
     particle_filter_incremental,
-    mcmc
+    mcmc,
+
+    # sbc_tests.jl
+    rank_test,
+    χ2_uniformtest
 end
