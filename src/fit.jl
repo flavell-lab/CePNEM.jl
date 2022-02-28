@@ -64,19 +64,20 @@ function hmc_jump_update(tr, μ_vT, σ_vT)
     (tr, accept) = mh(tr, drift_y0, ())
 
     # apply HMC to all other parameters
-    (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s0), eps=tr[:σ]/20)
+    (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
+    
+    # jump noise and EWMA parameters
+    (tr, accept) = mh(tr, select(:σ0))
+    (tr, accept) = mh(tr, select(:s0))
     
     # apply "jump" transforms that attempt to exploit symmetries of the kernel
     neg = rand([-1, 1])
-    (tr, accept) = mh(tr, jump_c1, (neg,))   
+    (tr, accept) = mh(tr, jump_c1, (neg,))
     neg = rand([-1, 1])
-    (tr, accept) = mh(tr, jump_c3, (neg,))   
+    (tr, accept) = mh(tr, jump_c3, (neg,))
     neg_c1 = rand([-1,1])
     neg_c2 = rand([-1,1])
     (tr, accept) = mh(tr, jump_all, (neg_c1, neg_c2, μ_vT, σ_vT))
-    
-    # update noise value
-    (tr, accept) = mh(tr, select(:σ))
     
     return tr
 end
