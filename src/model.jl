@@ -71,10 +71,12 @@ end
 
 Gen.@load_generated_functions
 
-function get_free_params(trace; use_ewma=true)
-    if use_ewma
+function get_free_params(trace, model)
+    if model == :nl7b
+        return [trace[:c_vT], trace[:c_v], trace[:c_θh], trace[:c_P], trace[:c], trace[:y0], trace[:s0], trace[:b], trace[:σ0]]
+    elseif model == :v
         return [trace[:c1], trace[:c2], trace[:c3], trace[:y0], trace[:s0], trace[:b], trace[:σ0]]
-    else
+    elseif model == :v_noewma
         return [trace[:c1], trace[:c2], trace[:c3], trace[:b], trace[:σ]]
     end
 end

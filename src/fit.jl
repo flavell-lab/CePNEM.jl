@@ -9,6 +9,18 @@ In case of c2 near 0, propose massive jump in c1 and shift all other variables a
     b ~ normal(c_coeff - (1+c1)*c3/sqrt(c1^2+1), 1e-4)
 end
 
+@gen function jump_c_vT(current_trace, neg)
+    vT_coeff = -2 * current_trace[:c_vT] * current_trace[:c] / sqrt(current_trace[:c_vT]^2 + 1)
+    vT_θh_coeff = -2 * current_trace[:c_vT] * current_trace[:c_θh] / sqrt(current_trace[:c_vT]^2 + 1)
+    vT_P_coeff = -2 * current_trace[:c_vT] * current_trace[:c_P] / sqrt(current_trace[:c_vT]^2 + 1)
+    c_coeff = (1+current_trace[:c_vT]) * current_trace[:c] / sqrt(current_trace[:c_vT]^2+1) + current_trace[:b]
+    c_vT ~ normal(current_trace[:c_vT] * neg,1)
+    c ~ normal(vT_coeff/(-2*c_vT/sqrt(c_vT^2+1)), 1e-4)
+    c_θh ~ normal(θh_coeff/(-2*c_vT/sqrt(c_vT^2+1)), 1e-4)
+    c_P ~ normal(P_coeff/(-2*c_vT/sqrt(c_vT^2+1)), 1e-4)
+    b ~ normal(c_coeff - (1+c_vT)*c/sqrt(c_vT^2+1), 1e-4)
+end
+
 
 """
 In case of c1 near 0, propose massive jump in c3 to the prior and shift all other variables accordingly
@@ -59,16 +71,28 @@ end
     y0 ~ normal(current_trace[:y0], 0.5)
 end
 
-function hmc_jump_update(tr, μ_vT, σ_vT)
+function hmc_jump_update(tr, μ_vT, σ_vT, model)
     # update y0
-    (tr, accept) = mh(tr, drift_y0, ())
+    if !(model == :v_noewma)
+        (tr, accept) = mh(tr, drift_y0, ())
+    end
 
     # apply HMC to all other parameters
-    (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
+    if model == :nl7b
+        (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
+    elseif model == :v
+        (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
+    elseif model == :v_noewma
+        (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b), eps=tr[:σ]/20)
+    end
     
     # jump noise and EWMA parameters
-    (tr, accept) = mh(tr, select(:σ0))
-    (tr, accept) = mh(tr, select(:s0))
+    if !(model == :v_noewma)
+        (tr, accept) = mh(tr, select(:σ0))
+        (tr, accept) = mh(tr, select(:s0))
+    else
+        (tr, accept) = mh(tr, select(:σ))
+    end
     
     # apply "jump" transforms that attempt to exploit symmetries of the kernel
     neg = rand([-1, 1])
@@ -82,24 +106,23 @@ function hmc_jump_update(tr, μ_vT, σ_vT)
     return tr
 end
 
-function particle_filter_incremental(num_particles::Int, raw_v::Vector{Float64}, ys::Vector{Float64}, num_samples::Int, num_steps::Int; use_ewma=true)
-    μ_vT = mean(raw_v .< 0)
-    σ_vT = std(raw_v .< 0)
+function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64},
+         ys::Vector{Float64}, num_samples::Int, num_steps::Int, model::Symbol)
+    μ_vT = mean(v .< 0)
+    σ_vT = std(v .< 0)
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
-    if use_ewma
-        state = Gen.initialize_particle_filter(unfold_v, (1,raw_v), init_obs, num_particles)
-    else
-        state = Gen.initialize_particle_filter(unfold_v_noewma, (1,raw_v), init_obs, num_particles)
+    if model == :nl7b
+        state = Gen.initialize_particle_filter(unfold_nl7b, (1,v,θh,P), init_obs, num_particles)
+    elseif model == :v
+        state = Gen.initialize_particle_filter(unfold_v, (1,v), init_obs, num_particles)
+    elseif model == :v_noewma
+        state = Gen.initialize_particle_filter(unfold_v_noewma, (1,v), init_obs, num_particles)
     end
     for t=2:length(ys)
         if maybe_resample!(state, ess_threshold=num_particles/2)
             for i=1:num_particles
                 for step=1:num_steps
-                    if use_ewma
-                        state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT)
-                    else
-                        state.traces[i] = hmc_jump_update_noewma(state.traces[i], μ_vT, σ_vT)
-                    end
+                    state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT, model)
                 end
             end
         end
@@ -109,7 +132,7 @@ function particle_filter_incremental(num_particles::Int, raw_v::Vector{Float64},
     return Gen.sample_unweighted_traces(state, num_samples)
 end
 
-function mcmc(raw_v, ys, n_iters, max_t; use_ewma=true)
+function mcmc(raw_v, ys, n_iters, max_, model)
     μ_vT = mean(raw_v .< 0)
     σ_vT = std(raw_v .< 0)
     traces = Vector{Any}(undef, n_iters)
@@ -118,15 +141,19 @@ function mcmc(raw_v, ys, n_iters, max_t; use_ewma=true)
         init_obs[:chain => t => :y] = ys[t]
     end
     
-    if use_ewma
+    if model == :nl7b
+
+    elseif model == :v
         (traces[1], _) = generate(unfold_v, (max_t, raw_v), init_obs)
-    else
+    elseif model == :v_noewma
         (traces[1], _) = generate(unfold_v_noewma, (max_t, raw_v), init_obs)
     end
     for iter=2:n_iters
-        if use_ewma
+        if model == :nl7b
+
+        elseif model == :v
             traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT)
-        else
+        elseif model == :v_noewma
             traces[iter] = hmc_jump_update_noewma(traces[iter-1], μ_vT, σ_vT)
         end
     end
