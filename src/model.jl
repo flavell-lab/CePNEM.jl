@@ -14,7 +14,7 @@ end
 
 @gen (static) function kernel_v(t::Int, y_prev::Float64, xs::Array{Float64}, v_0::Float64,
         (grad)(c1::Float64), (grad)(c2::Float64), (grad)(c3::Float64), (grad)(s::Float64), (grad)(b::Float64), (grad)(σ::Float64)) # latent variables
-    y ~ normal(((c1+1)/sqrt(c1^2+1) - 2*c1/sqrt(c1^2+1) * lesser(xs[t], v_0)) * (c2 * xs[t] + c3) / (s+1) + (y_prev - b) * s / (s+1) + b, σ * sqrt(2*s+1)/(s+1))
+    y ~ normal(((c1+1)/sqrt(c1^2+1) - 2*c1/sqrt(c1^2+1) * lesser(xs[t], v_0)) * (c2 * xs[t] + c3) / (s+1) + (y_prev - b) * s / (s+1) + b, σ * correct_σ(σ, s))
     return y
 end
 
@@ -63,6 +63,10 @@ end
 
 function compute_σ(σ0)
     return σ_MEAN * 2^σ0
+end
+
+function correct_σ(σ, s)
+    return σ * sqrt(2*s+1)/(s+1)
 end
 
 Gen.@load_generated_functions

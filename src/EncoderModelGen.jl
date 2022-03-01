@@ -22,6 +22,7 @@ export
     get_free_params,
     compute_s,
     compute_σ,
+    correct_σ,
 
     # fit.jl
     hmc_jump_update,
