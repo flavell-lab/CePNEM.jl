@@ -3,8 +3,8 @@ logistic(x,x0,k) = 1 / (1 + exp(-k * (x - x0)))
 leaky_logistic(x,x0,k,m) = logistic(x,x0,k) + m * (x - x0)
 lesser(x,x0) = leaky_logistic(x0,x,50,1e-3)
 
-const S_STD = 15
-const σ_MEAN = 0.1
+const s_MEAN = 10
+const σ_MEAN = 0.5
 
 @gen (static) function kernel_noewma(t::Int, y_prev::Float64, xs::Array{Float64}, v_0::Float64,
         (grad)(c_vT::Float64), (grad)(c_v::Float64), (grad)(c::Float64), (grad)(b::Float64), σ::Float64) # latent variables
@@ -29,8 +29,6 @@ end
     return y
 end
 
-
-
 Gen.@load_generated_functions
 
 chain = Gen.Unfold(kernel_noewma)
@@ -52,7 +50,7 @@ chain_nl7b = Gen.Unfold(kernel_nl7b)
     c ~ normal(0,1)
     y0 ~ normal(0,1)
     s0 ~ normal(0,1)
-    b ~ normal(0,2)
+    b ~ normal(0,1)
     σ0 ~ normal(0,1)
     
     s = compute_s(s0)
@@ -96,15 +94,11 @@ end
 end
 
 function compute_s(s0)
-    return sqrt(S_STD^2*s0^2+1) / (1 + exp(-S_STD * s0) * sqrt(S_STD^2*s0^2+1))
+    return s_MEAN * exp(s0)
 end
 
 function compute_σ(σ0)
-    return σ_MEAN * 2^σ0
-end
-
-function correct_σ(σ, s)
-    return σ * sqrt(2*s+1)/(s+1)
+    return σ_MEAN * exp(σ0)
 end
 
 Gen.@load_generated_functions

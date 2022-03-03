@@ -5,6 +5,7 @@ using FlavellBase
 using HDF5
 using Statistics
 using StatsBase
+using Distributions
 
 include("fit.jl")
 include("model.jl")
@@ -23,7 +24,6 @@ export
     get_free_params,
     compute_s,
     compute_σ,
-    correct_σ,
 
     # fit.jl
     hmc_jump_update,
