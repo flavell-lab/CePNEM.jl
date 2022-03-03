@@ -1,65 +1,52 @@
 """
-In case of c2 near 0, propose massive jump in c1 and shift all other variables accordingly
+In case of c_v near 0, propose massive jump in c_vT and shift all other variables accordingly
 """
-@gen function jump_c1(current_trace, neg)
-    vT_coeff = -2 * current_trace[:c1] * current_trace[:c3] / sqrt(current_trace[:c1]^2 + 1)
-    c_coeff = (1+current_trace[:c1]) * current_trace[:c3] / sqrt(current_trace[:c1]^2+1) + current_trace[:b]
-    c1 ~ normal(current_trace[:c1] * neg,1)
-    c3 ~ normal(vT_coeff/(-2*c1/sqrt(c1^2+1)), 1e-4)
-    b ~ normal(c_coeff - (1+c1)*c3/sqrt(c1^2+1), 1e-4)
-end
-
 @gen function jump_c_vT(current_trace, neg)
     vT_coeff = -2 * current_trace[:c_vT] * current_trace[:c] / sqrt(current_trace[:c_vT]^2 + 1)
-    vT_θh_coeff = -2 * current_trace[:c_vT] * current_trace[:c_θh] / sqrt(current_trace[:c_vT]^2 + 1)
-    vT_P_coeff = -2 * current_trace[:c_vT] * current_trace[:c_P] / sqrt(current_trace[:c_vT]^2 + 1)
     c_coeff = (1+current_trace[:c_vT]) * current_trace[:c] / sqrt(current_trace[:c_vT]^2+1) + current_trace[:b]
     c_vT ~ normal(current_trace[:c_vT] * neg,1)
     c ~ normal(vT_coeff/(-2*c_vT/sqrt(c_vT^2+1)), 1e-4)
-    c_θh ~ normal(θh_coeff/(-2*c_vT/sqrt(c_vT^2+1)), 1e-4)
-    c_P ~ normal(P_coeff/(-2*c_vT/sqrt(c_vT^2+1)), 1e-4)
     b ~ normal(c_coeff - (1+c_vT)*c/sqrt(c_vT^2+1), 1e-4)
 end
 
-
 """
-In case of c1 near 0, propose massive jump in c3 to the prior and shift all other variables accordingly
+In case of c_vT near 0, propose massive jump in c to the prior and shift all other variables accordingly
 """
-@gen function jump_c3(current_trace, neg)
-    c_coeff = (1+current_trace[:c1]) * current_trace[:c3] / sqrt(current_trace[:c1]^2+1) + current_trace[:b]
-    c3 ~ normal(current_trace[:c3] * neg, 1)
-    b ~ normal(c_coeff - (1+current_trace[:c1])*c3/sqrt(current_trace[:c1]^2+1), 1e-4)
+@gen function jump_c(current_trace, neg)
+    c_coeff = (1+current_trace[:c_vT]) * current_trace[:c] / sqrt(current_trace[:c_vT]^2+1) + current_trace[:b]
+    c ~ normal(current_trace[:c] * neg, 1)
+    b ~ normal(c_coeff - (1+current_trace[:c_vT])*c/sqrt(current_trace[:c_vT]^2+1), 1e-4)
 end
 
 """
 Use the fact that vT = (v < 0) and v are similar to propose effectively swapping the two variables
 Specifically, moves parameter values along the manifold where v = (μ_vT - vT) / σ_vT. 
 """
-@gen function jump_all(current_trace, neg_c1, neg_c2, μ_vT, σ_vT)
-    curr_c1 = current_trace[:c1]
-    curr_c2 = current_trace[:c2]
-    curr_c3 = current_trace[:c3]
-    vT_coeff = (-2*curr_c1*curr_c3*σ_vT + 2*curr_c1*curr_c2 - (1+curr_c1)*curr_c2 - 2*curr_c1*curr_c2*μ_vT) / (sqrt(curr_c1^2+1) * σ_vT)
-    c_coeff = current_trace[:b] + ((1+curr_c1)*curr_c3) / sqrt(curr_c1^2+1) + ((1+curr_c1)*curr_c2*μ_vT)/(sqrt(curr_c1^2+1)*σ_vT)
+@gen function jump_c_vvT(current_trace, neg_c_vT, neg_c_v, μ_vT, σ_vT)
+    curr_c_vT = current_trace[:c_vT]
+    curr_c_v = current_trace[:c_v]
+    curr_c = current_trace[:c]
+    vT_coeff = (-2*curr_c_vT*curr_c*σ_vT + 2*curr_c_vT*curr_c_v - (1+curr_c_vT)*curr_c_v - 2*curr_c_vT*curr_c_v*μ_vT) / (sqrt(curr_c_vT^2+1) * σ_vT)
+    c_coeff = current_trace[:b] + ((1+curr_c_vT)*curr_c) / sqrt(curr_c_vT^2+1) + ((1+curr_c_vT)*curr_c_v*μ_vT)/(sqrt(curr_c_vT^2+1)*σ_vT)
     
-    c1 ~ normal(current_trace[:c1] * neg_c1, 1)
-    c2 ~ normal(current_trace[:c2] * neg_c2, 1)
-    c3 ~ normal((-c2 + c1*c2 - 2*c1*c2*μ_vT - sqrt(c1^2+1)*σ_vT*vT_coeff)/(2*c1*σ_vT), 1e-4)
-    b ~ normal(c_coeff - ((1+c1)*c3+(1+c1)*c2*μ_vT/σ_vT)/sqrt(c1^2+1), 1e-4)
+    c_vT ~ normal(current_trace[:c_vT] * neg_c_vT, 1)
+    c_v ~ normal(current_trace[:c_v] * neg_c_v, 1)
+    c ~ normal((-c_v + c_vT*c_v - 2*c_vT*c_v*μ_vT - sqrt(c_vT^2+1)*σ_vT*vT_coeff)/(2*c_vT*σ_vT), 1e-4)
+    b ~ normal(c_coeff - ((1+c_vT)*c+(1+c_vT)*c_v*μ_vT/σ_vT)/sqrt(c_vT^2+1), 1e-4)
 end
 
 function hmc_jump_update_noewma(tr, μ_vT, σ_vT)
     # apply HMC to the entire trace
-    (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b), eps=tr[:σ]/20)
+    (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c, :b), eps=tr[:σ]/20)
     
     # apply "jump" transforms that attempt to exploit symmetries of the kernel
     neg = rand([-1, 1])
-    (tr, accept) = mh(tr, jump_c1, (neg,))   
+    (tr, accept) = mh(tr, jump_c_vT, (neg,))   
     neg = rand([-1, 1])
-    (tr, accept) = mh(tr, jump_c3, (neg,))   
-    neg_c1 = rand([-1,1])
-    neg_c2 = rand([-1,1])
-    (tr, accept) = mh(tr, jump_all, (neg_c1, neg_c2, μ_vT, σ_vT))
+    (tr, accept) = mh(tr, jump_c, (neg,))   
+    neg_c_vT = rand([-1,1])
+    neg_c_v = rand([-1,1])
+    (tr, accept) = mh(tr, jump_all, (neg_c_vT, neg_c_v, μ_vT, σ_vT))
     
     # update noise value
     (tr, accept) = mh(tr, select(:σ))
@@ -81,9 +68,9 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
     if model == :nl7b
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
     elseif model == :v
-        (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
+        (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
     elseif model == :v_noewma
-        (tr, accept) = hmc(tr, select(:c1, :c2, :c3, :b), eps=tr[:σ]/20)
+        (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c, :b), eps=tr[:σ]/20)
     end
     
     # jump noise and EWMA parameters
@@ -96,12 +83,12 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
     
     # apply "jump" transforms that attempt to exploit symmetries of the kernel
     neg = rand([-1, 1])
-    (tr, accept) = mh(tr, jump_c1, (neg,))
+    (tr, accept) = mh(tr, jump_c_vT, (neg,))
     neg = rand([-1, 1])
-    (tr, accept) = mh(tr, jump_c3, (neg,))
-    neg_c1 = rand([-1,1])
-    neg_c2 = rand([-1,1])
-    (tr, accept) = mh(tr, jump_all, (neg_c1, neg_c2, μ_vT, σ_vT))
+    (tr, accept) = mh(tr, jump_c, (neg,))
+    neg_c_vT = rand([-1,1])
+    neg_c_v = rand([-1,1])
+    (tr, accept) = mh(tr, jump_all, (neg_c_vT, neg_c_v, μ_vT, σ_vT))
     
     return tr
 end
