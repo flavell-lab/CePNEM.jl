@@ -120,7 +120,11 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
             end
         end
         obs = Gen.choicemap((:chain => t => :y, ys[t]))
-        Gen.particle_filter_step!(state, (t,v), (IntDiff(1), NoChange()), obs)
+        if model == :nl7b
+            Gen.particle_filter_step!(state, (t,v,θh,P), (IntDiff(1), NoChange(), NoChange(), NoChange()), obs)
+        elseif model == :v || model == :v_noewma
+            Gen.particle_filter_step!(state, (t,v), (IntDiff(1), NoChange()), obs)
+        end
     end
     return Gen.sample_unweighted_traces(state, num_samples)
 end
