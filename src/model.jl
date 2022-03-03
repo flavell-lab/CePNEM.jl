@@ -14,15 +14,53 @@ end
 
 @gen (static) function kernel_v(t::Int, y_prev::Float64, xs::Array{Float64}, v_0::Float64,
         (grad)(c_vT::Float64), (grad)(c_v::Float64), (grad)(c::Float64), (grad)(s::Float64), (grad)(b::Float64), (grad)(σ::Float64)) # latent variables
-    y ~ normal(((c_vT+1)/sqrt(c_vT^2+1) - 2*c_vT/sqrt(c_vT^2+1) * lesser(xs[t], v_0)) * (c_v * xs[t] + c) / (s+1) + (y_prev - b) * s / (s+1) + b, correct_σ(σ, s))
+    y ~ normal(((c_vT+1)/sqrt(c_vT^2+1) - 2*c_vT/sqrt(c_vT^2+1) * lesser(xs[t], v_0)) * (c_v * xs[t] + c) / (s+1) + (y_prev - b) * s / (s+1) + b, σ)
     return y
 end
+
+@gen (static) function kernel_nl7b(t::Int, y_prev::Float64, std_v::Array{Float64}, 
+            std_θh::Array{Float64}, std_P::Array{Float64}, v_0::Float64,
+            (grad)(c_vT::Float64), (grad)(c_v::Float64), (grad)(c_θh::Float64),
+            (grad)(c_P::Float64), (grad)(c::Float64),
+            (grad)(s::Float64), (grad)(b::Float64), (grad)(σ::Float64))
+    y ~ normal(((c_vT+1)/sqrt(c_vT^2+1) - 2*c_vT/sqrt(c_vT^2+1) * lesser(std_v[t], v_0)) * 
+            (c_v * std_v[t] + c_θh * std_θh[t] + c_P * std_P[t] + c) / (s+1)
+            + (y_prev - b) * s / (s+1) + b, σ)
+    return y
+end
+
+
 
 Gen.@load_generated_functions
 
 chain = Gen.Unfold(kernel_noewma)
 
 chain_v = Gen.Unfold(kernel_v)
+
+chain_nl7b = Gen.Unfold(kernel_nl7b)
+
+@gen (static) function unfold_nl7b(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
+    v_0 = -mean(v)/std(v)
+    std_v = zstd(v)
+    std_θh = zstd(θh)
+    std_P = zstd(P)
+
+    c_vT ~ normal(0,1)
+    c_v ~ normal(0,1)
+    c_θh ~ normal(0,1)
+    c_P ~ normal(0,1)
+    c ~ normal(0,1)
+    y0 ~ normal(0,1)
+    s0 ~ normal(0,1)
+    b ~ normal(0,2)
+    σ0 ~ normal(0,1)
+    
+    s = compute_s(s0)
+    σ = compute_σ(σ0)
+
+    chain ~ chain_nl7b(t, y0, std_v, std_θh, std_P, v_0, c_vT, c_v, c_θh, c_P, c, s, b, σ)
+    return 1
+end
 
 @gen (static) function unfold_v_noewma(t::Int, raw_v::Array{Float64})
     v_0 = -mean(raw_v)/std(raw_v)
