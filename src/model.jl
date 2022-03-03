@@ -98,7 +98,7 @@ function compute_s(s0)
 end
 
 function compute_σ(σ0)
-    return σ_MEAN * exp(σ0)
+    return σ_MEAN * exp(σ0/2)
 end
 
 Gen.@load_generated_functions
