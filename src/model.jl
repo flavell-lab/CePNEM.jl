@@ -5,6 +5,10 @@ lesser(x,x0) = leaky_logistic(x0,x,50,1e-3)
 
 const s_MEAN = 10
 const σ_MEAN = 0.5
+const v_STD = 0.06030961137253011
+const vT_STD = 0.9425527026496543
+const θh_STD = 0.49429038957075727
+const P_STD = 1.2772001409506841
 
 @gen (static) function kernel_noewma(t::Int, y_prev::Float64, xs::Array{Float64}, v_0::Float64,
         (grad)(c_vT::Float64), (grad)(c_v::Float64), (grad)(c::Float64), (grad)(b::Float64), σ::Float64) # latent variables
@@ -38,10 +42,10 @@ chain_v = Gen.Unfold(kernel_v)
 chain_nl7b = Gen.Unfold(kernel_nl7b)
 
 @gen (static) function unfold_nl7b(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
-    v_0 = -mean(v)/std(v)
-    std_v = zstd(v)
-    std_θh = zstd(θh)
-    std_P = zstd(P)
+    v_0 = 0.0
+    std_v = v/v_STD
+    std_θh = θh/θh_STD
+    std_P = P/P_STD
 
     c_vT ~ normal(0,1)
     c_v ~ normal(0,1)

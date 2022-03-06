@@ -101,8 +101,8 @@ end
 
 function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64},
          ys::Vector{Float64}, num_samples::Int, num_steps::Int, model::Symbol)
-    μ_vT = mean(v .< 0)
-    σ_vT = std(v .< 0)
+    μ_vT = 0.0
+    σ_vT = vT_STD
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
     if model == :nl7b
         state = Gen.initialize_particle_filter(unfold_nl7b, (1,v,θh,P), init_obs, num_particles)
@@ -130,8 +130,8 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
 end
 
 function mcmc(v, θh, P, ys, n_iters, max_, model)
-    μ_vT = mean(v .< 0)
-    σ_vT = std(v .< 0)
+    μ_vT = 0.0
+    σ_vT = vT_STD
     traces = Vector{Any}(undef, n_iters)
     init_obs = Gen.choicemap()
     for t=1:max_t
