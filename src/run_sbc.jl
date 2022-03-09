@@ -16,7 +16,7 @@ P = dict["pumping"][201:200+n_obs]
 ys = [trace[:chain => t => :y] for t=1:n_obs]
 
 particles_5000_2 = zeros(2047, n_params)
-@time state = particle_filter_incremental(5000, v, θh, P, ys, 2047, 2, model)
+@time state = particle_filter_incremental(5000, v, θh, P, ys, 2, model)
 output_state(state, output_path, 2047, model)
 
 h5open(output_path, "r+") do f
