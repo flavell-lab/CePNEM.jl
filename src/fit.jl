@@ -100,7 +100,7 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
 end
 
 function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64},
-         ys::Vector{Float64}, num_samples::Int, num_steps::Int, model::Symbol)
+         ys::Vector{Float64}, num_steps::Int, model::Symbol)
     μ_vT = 0.0
     σ_vT = vT_STD
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
