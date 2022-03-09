@@ -126,7 +126,42 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
             Gen.particle_filter_step!(state, (t,v), (IntDiff(1), NoChange()), obs)
         end
     end
-    return Gen.sample_unweighted_traces(state, num_samples)
+    return state
+end
+
+function output_state(state::Gen.ParticleFilterState, h5path::String, n_samples::Int, model::Symbol)
+    if model == :nl7b
+        n_params = 9
+    elseif model == :v
+        n_params = 7
+    elseif model == :v_noewma
+        n_params = 5
+    end
+    traces = Gen.get_traces(state)
+    unweighted_traces = Gen.sample_unweighted_traces(state, n_samples)
+    
+    n_particles = length(traces)
+    trace_params = zeros(n_particles, n_params)
+    sampled_trace_params = zeros(n_samples, n_params)
+    trace_scores = zeros(n_particles)
+    
+    for (i,tr) = enumerate(traces)
+        trace_params[i,:] .= get_free_params(tr, model)
+        trace_scores[i] = Gen.get_score(tr)
+    end
+    
+    for (i,tr) = enumerate(unweighted_traces)
+        sampled_trace_params[i,:] = get_free_params(tr, model)
+    end        
+    
+    h5open(h5path, "w") do f
+        f["trace_params"] = trace_params
+        f["log_weights"] = Gen.get_log_weights(state)
+        f["trace_scores"] = trace_scores
+        f["n_particles"] = n_particles
+        f["sampled_trace_params"] = sampled_trace_params
+        f["log_ml_est"] = Gen.log_ml_estimate(state)
+    end
 end
 
 function mcmc(v, θh, P, ys, n_iters, max_, model)

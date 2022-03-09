@@ -33,6 +33,7 @@ export
     # fit.jl
     hmc_jump_update,
     particle_filter_incremental,
+    output_state,
     mcmc,
 
     # sbc_tests.jl
