@@ -39,8 +39,7 @@ end
             (grad)(c_P::Float64), (grad)(c::Float64),
             (grad)(s::Float64), (grad)(b::Float64), (grad)(σ::Float64))
     z = ((c_vT+1)/sqrt(c_vT^2+1) - 2*c_vT/sqrt(c_vT^2+1) * lesser(std_v[t], v_0)) * 
-            (c_v * std_v[t] + c_θh * std_θh[t] + c_P * std_P[t] + c) / (s+1)
-            + (z_prev - b) * s / (s+1) + b
+            (c_v * std_v[t] + c_θh * std_θh[t] + c_P * std_P[t] + c) / (s+1) + (z_prev - b) * s / (s+1) + b
     y ~ normal(z, σ)
     return z
 end
