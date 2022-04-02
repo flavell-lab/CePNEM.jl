@@ -24,6 +24,7 @@ export
     θh_STD,
     P_STD,
     unfold_nl7b,
+    unfold_nl8,
     unfold_v_noewma,
     unfold_v,
     get_free_params,
