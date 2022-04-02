@@ -65,7 +65,7 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
     end
 
     # apply HMC to all other parameters
-    if model == :nl7b
+    if model == :nl7b || model == :nl8
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/30)
     elseif model == :v
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
@@ -91,7 +91,7 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
     (tr, accept) = mh(tr, jump_c_vvT, (neg_c_vT, neg_c_v, μ_vT, σ_vT))
     
     # jump other parameters that haven't been jumped yet
-    if model == :nl7b
+    if model == :nl7b || model == :nl8
         (tr, accept) = mh(tr, select(:c_θh))
         (tr, accept) = mh(tr, select(:c_P))
     end 
@@ -106,6 +106,8 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
     if model == :nl7b
         state = Gen.initialize_particle_filter(unfold_nl7b, (1,v,θh,P), init_obs, num_particles)
+    elseif model == :nl8
+        state = Gen.initialize_particle_filter(unfold_nl8, (1,v,θh,P), init_obs, num_particles)
     elseif model == :v
         state = Gen.initialize_particle_filter(unfold_v, (1,v), init_obs, num_particles)
     elseif model == :v_noewma
@@ -120,7 +122,7 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
             end
         end
         obs = Gen.choicemap((:chain => t => :y, ys[t]))
-        if model == :nl7b
+        if model == :nl7b || model == :nl8
             Gen.particle_filter_step!(state, (t,v,θh,P), (IntDiff(1), NoChange(), NoChange(), NoChange()), obs)
         elseif model == :v || model == :v_noewma
             Gen.particle_filter_step!(state, (t,v), (IntDiff(1), NoChange()), obs)
@@ -130,7 +132,7 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
 end
 
 function output_state(state::Gen.ParticleFilterState, h5path::String, n_samples::Int, model::Symbol)
-    if model == :nl7b
+    if model == :nl7b || model == :nl8
         n_params = 9
     elseif model == :v
         n_params = 7
@@ -175,13 +177,15 @@ function mcmc(v, θh, P, ys, n_iters, max_, model)
     
     if model == :nl7b
         (traces[1], _) = generate(unfold_nl7b, (max_t, v, θh, P), init_obs)
+    elseif model == :nl8
+        (traces[1], _) = generate(unfold_nl8, (max_t, v, θh, P), init_obs)
     elseif model == :v
         (traces[1], _) = generate(unfold_v, (max_t, v), init_obs)
     elseif model == :v_noewma
         (traces[1], _) = generate(unfold_v_noewma, (max_t, v), init_obs)
     end
     for iter=2:n_iters
-        if model == :nl7b
+        if model == :nl7b || model == :nl8
             traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT, :nl7b)
         elseif model == :v
             traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT, :v)
