@@ -175,7 +175,7 @@ function mcmc(v, θh, P, ys, n_iters, max_t, model, init_trace=nothing)
     σ_vT = vT_STD
     traces = Vector{Any}(undef, n_iters)
     
-    if isnothing(init_state)
+    if isnothing(init_trace)
         init_obs = Gen.choicemap()
         for t=1:max_t
             init_obs[:chain => t => :y] = ys[t]
