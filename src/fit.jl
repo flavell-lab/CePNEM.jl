@@ -170,7 +170,7 @@ function output_state(state::Gen.ParticleFilterState, h5path::String, n_samples:
     end
 end
 
-function mcmc(v, θh, P, ys, n_iters, max_, model)
+function mcmc(v, θh, P, ys, n_iters, max_t, model)
     μ_vT = 0.0
     σ_vT = vT_STD
     traces = Vector{Any}(undef, n_iters)
