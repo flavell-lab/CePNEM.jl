@@ -60,13 +60,15 @@ end
 
 function hmc_jump_update(tr, μ_vT, σ_vT, model)
     # update y0
-    if !(model == :v_noewma)
+    if model == :nl8
+        (tr, accept) = mh(tr, select(:y0))
+    elseif !(model == :v_noewma)
         (tr, accept) = mh(tr, drift_y0, ())
     end
 
     # apply HMC to all other parameters
     if model == :nl8
-        (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :y0, :s0, :σ0), eps=compute_σ(tr[:σ0])/30)
+        (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :y0, :s0, :σ0), eps=compute_σ(tr[:σ0])/50)
     elseif model == :nl7b
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/30)
     elseif model == :v
