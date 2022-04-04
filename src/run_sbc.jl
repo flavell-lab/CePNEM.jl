@@ -25,17 +25,14 @@ h5open(output_path_gt, "w") do f
     f["ground_truth"] = get_free_params(trace, model)
 end
 
-particles_5000_2 = zeros(2047, n_params)
 @time state = particle_filter_incremental(5000, v, θh, P, ys, 1, model)
 output_state(state, output_path_smc5000_1, 2047, model)
 
-
-particles_5000 = zeros(2047, n_params)
 @time state = particle_filter_incremental(5000, v, θh, P, ys, 2, model)
 output_state(state, output_path_smc5000_2, 2047, model)
 
-mcmc_5000 = zeros(4095, n_params)
-@time traces = mcmc(xs, ys, 5095, 300)
+mcmc_5000 = zeros(5095, n_params)
+@time traces = mcmc(xs, ys, 5095, 400, :nl8)
 for (i,p) in enumerate(traces)
     mcmc_5000[i,:] .= get_free_params(p)
 end
