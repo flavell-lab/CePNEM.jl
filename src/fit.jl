@@ -170,29 +170,31 @@ function output_state(state::Gen.ParticleFilterState, h5path::String, n_samples:
     end
 end
 
-function mcmc(v, θh, P, ys, n_iters, max_t, model)
+function mcmc(v, θh, P, ys, n_iters, max_t, model, init_trace=nothing)
     μ_vT = 0.0
     σ_vT = vT_STD
     traces = Vector{Any}(undef, n_iters)
-    init_obs = Gen.choicemap()
-    for t=1:max_t
-        init_obs[:chain => t => :y] = ys[t]
-    end
     
-    if model == :nl7b
-        (traces[1], _) = generate(unfold_nl7b, (max_t, v, θh, P), init_obs)
-    elseif model == :nl8
-        (traces[1], _) = generate(nl8, (max_t, v, θh, P), init_obs)
-    elseif model == :v
-        (traces[1], _) = generate(unfold_v, (max_t, v), init_obs)
-    elseif model == :v_noewma
-        (traces[1], _) = generate(unfold_v_noewma, (max_t, v), init_obs)
+    if isnothing(init_state)
+        init_obs = Gen.choicemap()
+        for t=1:max_t
+            init_obs[:chain => t => :y] = ys[t]
+        end
+        if model == :nl7b
+            (traces[1], _) = generate(unfold_nl7b, (max_t, v, θh, P), init_obs)
+        elseif model == :nl8
+            (traces[1], _) = generate(nl8, (max_t, v, θh, P), init_obs)
+        elseif model == :v
+            (traces[1], _) = generate(unfold_v, (max_t, v), init_obs)
+        elseif model == :v_noewma
+            (traces[1], _) = generate(unfold_v_noewma, (max_t, v), init_obs)
+        end
+    else
+        traces[1] = init_trace
     end
     for iter=2:n_iters
-        if model == :nl7b || model == :nl8
-            traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT, :nl7b)
-        elseif model == :v
-            traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT, :v)
+        if model in [:v, :nl7b, :nl8]
+            traces[iter] = hmc_jump_update(traces[iter-1], μ_vT, σ_vT, model)
         elseif model == :v_noewma
             traces[iter] = hmc_jump_update_noewma(traces[iter-1], μ_vT, σ_vT, :v_noewma)
         end
