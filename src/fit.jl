@@ -65,7 +65,9 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
     end
 
     # apply HMC to all other parameters
-    if model == :nl7b || model == :nl8
+    if model == :nl8
+        (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :y0, :s0, :σ0), eps=compute_σ(tr[:σ0])/30)
+    elseif model == :nl7b
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/30)
     elseif model == :v
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/20)
