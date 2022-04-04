@@ -4,7 +4,7 @@ leaky_logistic(x,x0,k,m) = logistic(x,x0,k) + m * (x - x0)
 lesser(x,x0) = leaky_logistic(x0,x,50,1e-3)
 
 const s_MEAN = 10
-const σ_MEAN = 0.5
+const σ_MEAN = 0.25
 const v_STD = 0.06030961137253011
 const vT_STD = 0.9425527026496543
 const θh_STD = 0.49429038957075727
