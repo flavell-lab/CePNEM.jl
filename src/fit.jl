@@ -107,7 +107,7 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
     if model == :nl7b
         state = Gen.initialize_particle_filter(unfold_nl7b, (1,v,θh,P), init_obs, num_particles)
     elseif model == :nl8
-        state = Gen.initialize_particle_filter(unfold_nl8, (1,v,θh,P), init_obs, num_particles)
+        state = Gen.initialize_particle_filter(nl8, (1,v,θh,P), init_obs, num_particles)
     elseif model == :v
         state = Gen.initialize_particle_filter(unfold_v, (1,v), init_obs, num_particles)
     elseif model == :v_noewma
@@ -178,7 +178,7 @@ function mcmc(v, θh, P, ys, n_iters, max_, model)
     if model == :nl7b
         (traces[1], _) = generate(unfold_nl7b, (max_t, v, θh, P), init_obs)
     elseif model == :nl8
-        (traces[1], _) = generate(unfold_nl8, (max_t, v, θh, P), init_obs)
+        (traces[1], _) = generate(nl8, (max_t, v, θh, P), init_obs)
     elseif model == :v
         (traces[1], _) = generate(unfold_v, (max_t, v), init_obs)
     elseif model == :v_noewma

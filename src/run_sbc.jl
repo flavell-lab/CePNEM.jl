@@ -12,7 +12,7 @@ v = dict["velocity"][201:200+n_obs]
 θh = dict["θh"][201:200+n_obs]
 P = dict["pumping"][201:200+n_obs]
 
-(trace, _) = Gen.generate(unfold_nl8, (n_obs, v, θh, P))
+(trace, _) = Gen.generate(nl8, (n_obs, v, θh, P))
 ys = [trace[:chain => t => :y] for t=1:n_obs]
 
 particles_5000_2 = zeros(2047, n_params)
