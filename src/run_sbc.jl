@@ -32,7 +32,7 @@ output_state(state, output_path_smc5000_1, 2047, model)
 output_state(state, output_path_smc5000_2, 2047, model)
 
 mcmc_5000 = zeros(5095, n_params)
-@time traces = mcmc(xs, ys, 5095, 400, :nl8)
+@time traces = mcmc(v, θh, P, ys, 5095, n_obs, :nl8)
 for (i,p) in enumerate(traces)
     mcmc_5000[i,:] .= get_free_params(p)
 end
