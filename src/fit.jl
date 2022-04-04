@@ -104,7 +104,7 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
 end
 
 function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64},
-         ys::Vector{Float64}, num_steps::Int, model::Symbol)
+         ys::Vector{Float64}, num_steps::Int, model::Symbol; always_rejuvenate=false)
     μ_vT = 0.0
     σ_vT = vT_STD
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
@@ -118,7 +118,7 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
         state = Gen.initialize_particle_filter(unfold_v_noewma, (1,v), init_obs, num_particles)
     end
     for t=2:length(ys)
-        if maybe_resample!(state, ess_threshold=num_particles/2)
+        if maybe_resample!(state, ess_threshold=num_particles/2) || always_rejuvenate
             for i=1:num_particles
                 for step=1:num_steps
                     state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT, model)
