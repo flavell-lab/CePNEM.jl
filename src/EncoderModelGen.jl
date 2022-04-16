@@ -26,6 +26,7 @@ export
     unfold_nl7b,
     model_nl8,
     nl8,
+    nl9,
     unfold_v_noewma,
     unfold_v,
     get_free_params,

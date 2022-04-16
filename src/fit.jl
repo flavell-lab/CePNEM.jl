@@ -58,16 +58,31 @@ end
     y0 ~ normal(current_trace[:y0], 0.5)
 end
 
-function hmc_jump_update(tr, μ_vT, σ_vT, model)
+@gen function drift_chain_model(current_trace, t, σ)
+    {(:chain_model => t => :y)} ~ normal(current_trace[:chain_model => t => :y], σ)
+end
+
+function hmc_jump_update(tr, μ_vT, σ_vT, model; max_t=nothing)
     # update y0
-    if model == :nl8
+    if model == :nl8 || model == :nl9
         (tr, accept) = mh(tr, select(:y0))
     elseif !(model == :v_noewma)
         (tr, accept) = mh(tr, drift_y0, ())
     end
+    
+    # update model error
+    if model == :nl9
+        σ = min(compute_σ(tr[:σ0_model]), compute_σ(tr[:σ0_measure]))
+        for t=1:max_t
+            (tr, accept) = mh(tr, drift_chain_model, (t,σ))
+        end
+    end
 
     # apply HMC to all other parameters
-    if model == :nl8
+    if model == :nl9
+        (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :y0, :s0, :σ0_model, :σ0_measure),
+                eps=(compute_σ(tr[:σ0_model]) + compute_σ(tr[:σ0_measure]))/90)
+    elseif model == :nl8
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :y0, :s0, :σ0), eps=compute_σ(tr[:σ0])/50)
     elseif model == :nl7b
         (tr, accept) = hmc(tr, select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :s0, :σ0), eps=compute_σ(tr[:σ0])/30)
@@ -79,27 +94,31 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model)
     
     # jump noise and EWMA parameters
     if !(model == :v_noewma)
-        (tr, accept) = mh(tr, select(:σ0))
+        if model == :nl9
+            (tr, accept) = mh(tr, select(:σ0_model))
+            (tr, accept) = mh(tr, select(:σ0_measure))
+        else
+            (tr, accept) = mh(tr, select(:σ0))
+        end
         (tr, accept) = mh(tr, select(:s0))
     else
         (tr, accept) = mh(tr, select(:σ))
     end
     
     # apply "jump" transforms that attempt to exploit symmetries of the kernel
-    neg = rand([-1, 1])
+    neg = rand([-1,1])
     (tr, accept) = mh(tr, jump_c_vT, (neg,))
-    neg = rand([-1, 1])
+    neg = rand([-1,1])
     (tr, accept) = mh(tr, jump_c, (neg,))
     neg_c_vT = rand([-1,1])
     neg_c_v = rand([-1,1])
     (tr, accept) = mh(tr, jump_c_vvT, (neg_c_vT, neg_c_v, μ_vT, σ_vT))
     
     # jump other parameters that haven't been jumped yet
-    if model == :nl7b || model == :nl8
+    if model in [:nl7b, :nl8, :nl9]
         (tr, accept) = mh(tr, select(:c_θh))
         (tr, accept) = mh(tr, select(:c_P))
-    end 
-    
+    end
     return tr
 end
 
@@ -108,7 +127,9 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
     μ_vT = 0.0
     σ_vT = vT_STD
     init_obs = Gen.choicemap((:chain => 1 => :y, ys[1]))
-    if model == :nl7b
+    if model == :nl9
+        state = Gen.initialize_particle_filter(nl9, (1,v,θh,P), init_obs, num_particles)
+    elseif model == :nl7b
         state = Gen.initialize_particle_filter(unfold_nl7b, (1,v,θh,P), init_obs, num_particles)
     elseif model == :nl8
         state = Gen.initialize_particle_filter(nl8, (1,v,θh,P), init_obs, num_particles)
@@ -121,12 +142,12 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
         if maybe_resample!(state, ess_threshold=num_particles/2) || always_rejuvenate
             for i=1:num_particles
                 for step=1:num_steps
-                    state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT, model)
+                    state.traces[i] = hmc_jump_update(state.traces[i], μ_vT, σ_vT, model, max_t=t-1)
                 end
             end
         end
         obs = Gen.choicemap((:chain => t => :y, ys[t]))
-        if model == :nl7b || model == :nl8
+        if model in [:nl7b, :nl8, :nl9]
             Gen.particle_filter_step!(state, (t,v,θh,P), (IntDiff(1), NoChange(), NoChange(), NoChange()), obs)
         elseif model == :v || model == :v_noewma
             Gen.particle_filter_step!(state, (t,v), (IntDiff(1), NoChange()), obs)

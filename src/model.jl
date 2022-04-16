@@ -22,7 +22,7 @@ end
     return y
 end
 
-@gen (static) function kernel_nl7b(t::Int, y_prev::Float64, std_v::Array{Float64}, 
+@gen (grad, static) function kernel_nl7b(t::Int, (grad)(y_prev::Float64), std_v::Array{Float64}, 
             std_θh::Array{Float64}, std_P::Array{Float64}, v_0::Float64,
             (grad)(c_vT::Float64), (grad)(c_v::Float64), (grad)(c_θh::Float64),
             (grad)(c_P::Float64), (grad)(c::Float64),
@@ -50,7 +50,7 @@ function model_nl8(max_t::Int, c_vT::T, c_v::T, c_θh::T, c_P::T, c::T, y0::T, s
     return activity
 end
 
-@gen (static) function kernel_nl8((grad)(z::Float64), (grad)(σ::Float64))
+@gen (grad, static) function kernel_nl8((grad)(z::Float64), (grad)(σ::Float64))
     y ~ normal(z, σ)
     return y
 end
@@ -108,6 +108,32 @@ end
     return 1
 end
 
+@gen (static) function nl9(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
+    v_0 = 0.0
+    std_v = v/v_STD
+    std_θh = θh/θh_STD
+    std_P = P/P_STD
+
+    c_vT ~ normal(0,1)
+    c_v ~ normal(0,1)
+    c_θh ~ normal(0,1)
+    c_P ~ normal(0,1)
+    c ~ normal(0,1)
+    y0 ~ normal(0,1)
+    s0 ~ normal(0,1)
+    b ~ normal(0,1)
+    σ0_model ~ normal(0,1)
+    σ0_measure ~ normal(0,1)
+    
+    s = compute_s(s0)
+    σ_model = compute_σ(σ0_model)
+    σ_measure = compute_σ(σ0_measure)
+
+    chain_model ~ chain_nl7b(t, y0, std_v, std_θh, std_P, v_0, c_vT, c_v, c_θh, c_P, c, s, b, σ_model)
+    chain ~ chain_nl8(chain_model, fill(σ_measure, t))
+    return 1
+end
+
 @gen (static) function unfold_v_noewma(t::Int, raw_v::Array{Float64})
     v_0 = -mean(raw_v)/std(raw_v)
     std_v = zstd(raw_v)
@@ -152,7 +178,9 @@ end
 Gen.@load_generated_functions
 
 function get_free_params(trace, model)
-    if model in [:nl7b, :nl8]
+    if model == :nl9
+        return [trace[:c_vT], trace[:c_v], trace[:c_θh], trace[:c_P], trace[:c], trace[:y0], trace[:s0], trace[:b], trace[:σ0_model], trace[:σ0_measure]]
+    elseif model in [:nl7b, :nl8]
         return [trace[:c_vT], trace[:c_v], trace[:c_θh], trace[:c_P], trace[:c], trace[:y0], trace[:s0], trace[:b], trace[:σ0]]
     elseif model == :v
         return [trace[:c_vT], trace[:c_v], trace[:c], trace[:y0], trace[:s0], trace[:b], trace[:σ0]]
