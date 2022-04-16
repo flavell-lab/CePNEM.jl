@@ -157,7 +157,9 @@ function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh
 end
 
 function output_state(state::Gen.ParticleFilterState, h5path::String, n_samples::Int, model::Symbol)
-    if model == :nl7b || model == :nl8
+    if model == :nl9
+        n_params = 10
+    elseif model in [:nl7b, :nl8]
         n_params = 9
     elseif model == :v
         n_params = 7
