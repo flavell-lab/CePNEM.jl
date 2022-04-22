@@ -50,6 +50,9 @@ export
     compute_σ,
 
     # fit.jl
+    jump_c_vT,
+    jump_c,
+    jump_c_vvT,
     drift_params,
     drift_α,
     drift_ℓ,
