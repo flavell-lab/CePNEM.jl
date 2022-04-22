@@ -12,6 +12,7 @@ path_h5 = "/om2/user/aaatanas/processed_h5/$(fit_uid)-data.h5"
 dict = import_data(path_h5)
 
 n_obs = 400
+max_t = n_obs
 model = :nl10c
 v = dict["velocity"][201:200+n_obs]
 θh = dict["θh"][201:200+n_obs]

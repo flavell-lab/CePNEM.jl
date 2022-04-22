@@ -179,7 +179,7 @@ end
     σ_RQ = σ_RQ_MEAN * exp(σ0_RQ * σ_RQ_STD)
     σ_noise = σ_NOISE_MEAN * exp(σ0_noise * σ_NOISE_STD)
 
-    cov_matrix = compute_cov_matrix_vectorized_RQ(max_t, α, ℓ, σ_RQ, σ_noise)
+    cov_matrix = compute_cov_matrix_vectorized_RQ(t, α, ℓ, σ_RQ, σ_noise)
     z = model_nl8(t, c_vT, c_v, c_θh, c_P, c, y0, s0, b, v, θh, P)
     
     @trace(mvnormal(z, cov_matrix), :ys)
@@ -206,7 +206,7 @@ end
     σ_SE = σ_SE_MEAN * exp(σ0_SE * σ_SE_STD)
     σ_noise = σ_NOISE_MEAN * exp(σ0_noise * σ_NOISE_STD)
 
-    cov_matrix = compute_cov_matrix_vectorized_SE(max_t, ℓ, σ_SE, σ_noise)
+    cov_matrix = compute_cov_matrix_vectorized_SE(t, ℓ, σ_SE, σ_noise)
     z = model_nl8(t, c_vT, c_v, c_θh, c_P, c, y0, s0, b, v, θh, P)
     
     @trace(mvnormal(z, cov_matrix), :ys)
