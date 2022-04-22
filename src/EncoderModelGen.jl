@@ -6,6 +6,8 @@ using HDF5
 using Statistics
 using StatsBase
 using Distributions
+using LinearAlgebra
+using MultivariateStats
 
 include("fit.jl")
 include("model.jl")
