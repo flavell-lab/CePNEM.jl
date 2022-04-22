@@ -55,6 +55,7 @@ export
     drift_ℓ,
     drift_σ_RQ,
     drift_σ_SE,
+    drift_σ_noise,
     hmc_jump_update,
     particle_filter_incremental,
     output_state,
