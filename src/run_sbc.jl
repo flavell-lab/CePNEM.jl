@@ -1,6 +1,8 @@
 Gen.@load_generated_functions
 
 n_params = 11
+μ_vT = 0.0
+σ_vT = vT_STD
 
 fit_uid = "2021-05-26-07"
 output_path_gt = "/om2/user/aaatanas/gen_sbc_nl10c/h5/$(ARGS[1])_gt.h5"
