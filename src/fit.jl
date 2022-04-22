@@ -62,6 +62,34 @@ end
     {(:chain_model => t => :y)} ~ normal(current_trace[:chain_model => t => :y], σ)
 end
 
+@gen function drift_params(tr, max_t, δ)
+    α0 ~ normal(tr[:α0], δ*α_STD)
+    ℓ0 ~ normal(tr[:ℓ0], δ*ℓ_STD)
+    σ0_RQ ~ normal(tr[:σ0_RQ], δ*σ_RQ_STD)
+    σ0_noise ~ normal(tr[:σ0_noise], δ*σ_NOISE_STD)
+end
+
+@gen function drift_α(tr, max_t, δ)
+    α0 ~ normal(tr[:α0], δ*α_STD)
+end
+
+@gen function drift_ℓ(tr, max_t, δ)
+    ℓ0 ~ normal(tr[:ℓ0], δ*ℓ_STD)
+end
+
+@gen function drift_σ_RQ(tr, max_t, δ)
+    σ0_RQ ~ normal(tr[:σ0_RQ], δ*σ_RQ_STD)
+end
+
+@gen function drift_σ_SE(tr, max_t, δ)
+    σ0_SE ~ normal(tr[:σ0_SE], δ*σ_SE_STD)
+end
+
+@gen function drift_σ_noise(tr, max_t, δ)
+    σ0_noise ~ normal(tr[:σ0_noise], δ*σ_NOISE_STD)
+end
+
+
 function hmc_jump_update(tr, μ_vT, σ_vT, model; max_t=nothing)
     # update y0
     if model == :nl8 || model == :nl9
