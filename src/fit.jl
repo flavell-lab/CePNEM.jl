@@ -167,7 +167,7 @@ function run_mcmc_10c(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1
     traces_init = Vector{Gen.DynamicDSLTrace{DynamicDSLFunction{Any}}}(undef, n_init)
     scores_init = zeros(n_init)
     cmap = Gen.choicemap()
-    cmap[:ys] = trace[:ys]
+    cmap[:ys] = ys
 
     println("Initializing MCMC chain...")
     @time for i=1:n_init
