@@ -26,7 +26,7 @@ h5open(output_path_gt, "w") do f
     f["ground_truth"] = get_free_params(trace, model)
 end
 
-n_init = 10000
+n_init = 100000
 n_track = 5
 n_iters = 2000
 
