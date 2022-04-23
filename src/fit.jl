@@ -1,3 +1,5 @@
+const BURNIN = 1000
+
 """
 In case of c_v near 0, propose massive jump in c_vT and shift all other variables accordingly
 """
@@ -197,7 +199,7 @@ function run_mcmc_10c(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1
     return traces_fit, accept, δ_vals
 end
 
-nl10c_traces_to_params = traces_fit -> mapreduce(permutedims, vcat, get_free_params.(traces_fit, :nl10c))
+nl10c_traces_to_params = traces_fit -> mapreduce(permutedims, vcat, get_free_params.(traces_fit[BURNIN+1:end], :nl10c))
 
 function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64},
          ys::Vector{Float64}, num_steps::Int, model::Symbol; always_rejuvenate=false)
