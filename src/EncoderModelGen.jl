@@ -33,7 +33,7 @@ export
     σ_RQ_STD,
     σ_SE_MEAN,
     σ_SE_STD,
-    σ_NOISE_MEA,
+    σ_NOISE_MEAN,
     σ_NOISE_STD,
     compute_cov_matrix_vectorized_RQ,
     compute_cov_matrix_vectorized_SE,
