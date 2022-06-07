@@ -1,4 +1,4 @@
-function import_data(path_h5)
+function import_data(path_h5::String; custom_keys::Union{Nothing,Vector{String}}=nothing)
     dict_ = Dict{String,Any}()
     
     h5open(path_h5,"r") do h5f
@@ -51,6 +51,13 @@ function import_data(path_h5)
         dict_["timestamp_confocal"] = read(h5f, "timing/timestamp_confocal")
         if haskey(h5f["timing"], "stim_begin_confocal")
             dict_["stim_begin_confocal"] = read(h5f, "timing/stim_begin_confocal")
+        end
+        
+        # custom data
+        if !isnothing(custom_keys)
+            for k = custom_keys
+                dict_[k] = read(h5f, k)
+            end
         end
     end
     
