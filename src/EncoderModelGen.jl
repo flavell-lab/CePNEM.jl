@@ -63,8 +63,9 @@ export
     particle_filter_incremental,
     output_state,
     mcmc,
-    run_mcmc_10c,
-    nl10c_traces_to_params
+    run_mcmc_10,
+    nl10c_traces_to_params,
+    nl10d_traces_to_params,
 
     # sbc_tests.jl
     rank_test,

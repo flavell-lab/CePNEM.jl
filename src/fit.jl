@@ -11,6 +11,10 @@ In case of c_v near 0, propose massive jump in c_vT and shift all other variable
     b ~ normal(c_coeff - (1+c_vT)*c/sqrt(c_vT^2+1), 1e-4)
 end
 
+@gen function jump_c_vT_10d(current_trace, neg)
+    c_vT ~ normal(current_trace[:c_vT] * neg, 1)
+end
+
 """
 In case of c_vT near 0, propose massive jump in c to the prior and shift all other variables accordingly
 """
@@ -24,16 +28,20 @@ end
 Use the fact that vT = (v < 0) and v are similar to propose effectively swapping the two variables
 Specifically, moves parameter values along the manifold where v = (μ_vT - vT) / σ_vT. 
 """
-@gen function jump_c_vvT(current_trace, neg_c_vT, neg_c_v, μ_vT, σ_vT)
+@gen function jump_c_vvT(current_trace, neg_c_vT, neg_c_v, μ_vT, σ_vT, use_c)
     curr_c_vT = current_trace[:c_vT]
     curr_c_v = current_trace[:c_v]
-    curr_c = current_trace[:c]
+    curr_c = use_c ? current_trace[:c] : 0.
     vT_coeff = (-2*curr_c_vT*curr_c*σ_vT + 2*curr_c_vT*curr_c_v - (1+curr_c_vT)*curr_c_v - 2*curr_c_vT*curr_c_v*μ_vT) / (sqrt(curr_c_vT^2+1) * σ_vT)
     c_coeff = current_trace[:b] + ((1+curr_c_vT)*curr_c) / sqrt(curr_c_vT^2+1) + ((1+curr_c_vT)*curr_c_v*μ_vT)/(sqrt(curr_c_vT^2+1)*σ_vT)
     
     c_vT ~ normal(current_trace[:c_vT] * neg_c_vT, 1)
     c_v ~ normal(current_trace[:c_v] * neg_c_v, 1)
-    c ~ normal((-c_v + c_vT*c_v - 2*c_vT*c_v*μ_vT - sqrt(c_vT^2+1)*σ_vT*vT_coeff)/(2*c_vT*σ_vT), 1e-4)
+    if use_c
+        c ~ normal((-c_v + c_vT*c_v - 2*c_vT*c_v*μ_vT - sqrt(c_vT^2+1)*σ_vT*vT_coeff)/(2*c_vT*σ_vT), 1e-4)
+    else
+        c = 0.
+    end
     b ~ normal(c_coeff - ((1+c_vT)*c+(1+c_vT)*c_v*μ_vT/σ_vT)/sqrt(c_vT^2+1), 1e-4)
 end
 
@@ -152,11 +160,11 @@ function hmc_jump_update(tr, μ_vT, σ_vT, model; max_t=nothing)
     return tr
 end
 
-function run_mcmc_10c(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1)
-    n_params = 11
+function run_mcmc_10(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1, model=:nl10d)
+    @assert(model in [:nl10c, :nl10d])
+    n_params = (model == :nl10c) ? 11 : 10
     μ_vT = 0.0
     σ_vT = vT_STD
-    model = :nl10c
     max_t = length(ys)
     n_obs = max_t
 
@@ -171,7 +179,7 @@ function run_mcmc_10c(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1
 
     println("Initializing MCMC chain...")
     @time for i=1:n_init
-        traces_init[i], _ = generate(nl10c, (max_t,v,θh,P), cmap)
+        traces_init[i], _ = (model == :nl10c) ? generate(nl10c, (max_t,v,θh,P), cmap) : generate(nl10d, (max_t,v,θh,P), cmap)
         scores_init[i] = get_score(traces_init[i])
     end
 
@@ -183,23 +191,27 @@ function run_mcmc_10c(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1
         traces_fit[i+1], accept[i+1,1] = mh(traces_fit[i], drift_ℓ, (max_t, δ_vals[i,1]))
         traces_fit[i+1], accept[i+1,2] = mh(traces_fit[i+1], drift_σ_SE, (max_t, δ_vals[i,2]))
         traces_fit[i+1], accept[i+1,3] = mh(traces_fit[i+1], drift_σ_noise, (max_t, δ_vals[i,3]))
-        traces_fit[i+1], accept[i+1,4] = hmc(traces_fit[i+1], select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :y0, :s0), eps=δ_vals[i,4])
+        traces_fit[i+1], accept[i+1,4] = (model == :nl10c) ? hmc(traces_fit[i+1], select(:c_vT, :c_v, :c_θh, :c_P, :c, :b, :y0, :s0), eps=δ_vals[i,4]) :
+                hmc(traces_fit[i+1], select(:c_vT, :c_v, :c_θh, :c_P, :b, :y0, :s0), eps=δ_vals[i,4])
         for k=1:4
             δ_vals[i+1,k] = (accept[i+1,k]) ? δ_vals[i,k] * lr_adjust : δ_vals[i,k] / lr_adjust
         end  
         neg = rand([-1,1])
-        (traces_fit[i+1], accept[i+1,5]) = mh(traces_fit[i+1], jump_c_vT, (neg,))
+        (traces_fit[i+1], accept[i+1,5]) = (model == :nl10c) ? mh(traces_fit[i+1], jump_c_vT, (neg,)) : mh(traces_fit[i+1], jump_c_vT_10d, (neg,))
         neg = rand([-1,1])
-        (traces_fit[i+1], accept[i+1,6]) = mh(traces_fit[i+1], jump_c, (neg,))
+        if model == :nl10c
+            (traces_fit[i+1], accept[i+1,6]) = mh(traces_fit[i+1], jump_c, (neg,))
+        end
         neg_c_vT = rand([-1,1])
         neg_c_v = rand([-1,1])
-        (traces_fit[i+1], accept[i+1,7]) = mh(traces_fit[i+1], jump_c_vvT, (neg_c_vT, neg_c_v, μ_vT, σ_vT))
+        (traces_fit[i+1], accept[i+1,7]) = mh(traces_fit[i+1], jump_c_vvT, (neg_c_vT, neg_c_v, μ_vT, σ_vT, (model == :nl10c)))
     end
 
     return traces_fit, accept, δ_vals
 end
 
 nl10c_traces_to_params = traces_fit -> mapreduce(permutedims, vcat, get_free_params.(traces_fit[BURNIN+1:end], :nl10c))
+nl10d_traces_to_params = traces_fit -> mapreduce(permutedims, vcat, get_free_params.(traces_fit[BURNIN+1:end], :nl10d))
 
 function particle_filter_incremental(num_particles::Int, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64},
          ys::Vector{Float64}, num_steps::Int, model::Symbol; always_rejuvenate=false)
