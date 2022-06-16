@@ -220,7 +220,7 @@ end
     c_v ~ normal(0,1)
     c_θh ~ normal(0,1)
     c_P ~ normal(0,1)
-    c = 0
+    c = 0.
     y0 ~ normal(0,1)
     s0 ~ normal(0,1)
     b ~ normal(0,1)
