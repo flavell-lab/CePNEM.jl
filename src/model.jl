@@ -44,7 +44,7 @@ end
     return y
 end
 
-function model_nl8(max_t::Int, c_vT::T, c_v::T, c_θh::T, c_P::T, c::T, y0::T, s0::T, b::T, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64}) where T
+function model_nl8(max_t::Int, c_vT::T, c_v::T, c_θh::T, c_P::T, c::Union{Float64,T}, y0::T, s0::T, b::T, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64}) where T
     std_v = v ./ v_STD
     std_θh = θh ./ θh_STD
     std_P = P ./ P_STD
