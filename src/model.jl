@@ -5,10 +5,8 @@ lesser(x,x0) = leaky_logistic(x0,x,50,1e-3)
 
 const s_MEAN = 10
 const σ_MEAN = 0.25
-const v_STD = 0.06030961137253011
-const vT_STD = 0.9425527026496543
-const θh_STD = 0.49429038957075727
-const P_STD = 1.2772001409506841
+
+# behavior standardization constants is defined in FlavellConstants.jl
 
 const ℓ_MEAN = 20
 const ℓ_STD = 1
@@ -45,9 +43,9 @@ end
 end
 
 function model_nl8(max_t::Int, c_vT::T, c_v::T, c_θh::T, c_P::T, c::T, y0::T, s0::T, b::T, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64}) where T
-    std_v = v ./ v_STD
-    std_θh = θh ./ θh_STD
-    std_P = P ./ P_STD
+    std_v = v ./ σ_vel
+    std_θh = θh ./ σ_θh
+    std_P = P ./ σ_pumping
     
     activity = zeros(T, max_t)
     s = compute_s(s0)
@@ -79,9 +77,9 @@ chain_nl8 = Gen.Map(kernel_nl8)
 
 @gen (static) function unfold_nl7b(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
     v_0 = 0.0
-    std_v = v/v_STD
-    std_θh = θh/θh_STD
-    std_P = P/P_STD
+    std_v = v/σ_vel
+    std_θh = θh/σ_θh
+    std_P = P/σ_pumping
 
     c_vT ~ normal(0,1)
     c_v ~ normal(0,1)
@@ -121,9 +119,9 @@ end
 
 @gen (static) function nl9(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
     v_0 = 0.0
-    std_v = v/v_STD
-    std_θh = θh/θh_STD
-    std_P = P/P_STD
+    std_v = v/σ_vel
+    std_θh = θh/σ_θh
+    std_P = P/σ_pumping
 
     c_vT ~ normal(0,1)
     c_v ~ normal(0,1)
