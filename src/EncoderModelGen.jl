@@ -13,7 +13,6 @@ using ANTSUNData
 
 include("fit.jl")
 include("model.jl")
-include("data.jl")
 include("sbc_tests.jl")
 
 export
