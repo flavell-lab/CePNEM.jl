@@ -44,7 +44,7 @@ end
     return y
 end
 
-function model_nl8(max_t::Int, c_vT::T, c_v::T, c_θh::T, c_P::T, c::T, y0::T, s0::T, b::T, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64}) where T
+function model_nl8(max_t::Int, c_vT::T, c_v::T, c_θh::T, c_P::T, c::Union{Float64,T}, y0::T, s0::T, b::T, v::Vector{Float64}, θh::Vector{Float64}, P::Vector{Float64}) where T
     std_v = v ./ v_STD
     std_θh = θh ./ θh_STD
     std_P = P ./ P_STD
@@ -213,6 +213,33 @@ end
     return 1
 end
 
+@gen function nl10d(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
+    v_0 = 0.0
+
+    c_vT ~ normal(0,1)
+    c_v ~ normal(0,1)
+    c_θh ~ normal(0,1)
+    c_P ~ normal(0,1)
+    c = 0.
+    y0 ~ normal(0,1)
+    s0 ~ normal(0,1)
+    b ~ normal(0,1)
+    
+    ℓ0 ~ normal(0,1)
+    σ0_SE ~ normal(0,1)
+    σ0_noise ~ normal(0,1)
+    
+    ℓ = ℓ_MEAN * exp(ℓ0 * ℓ_STD)
+    σ_SE = σ_SE_MEAN * exp(σ0_SE * σ_SE_STD)
+    σ_noise = σ_NOISE_MEAN * exp(σ0_noise * σ_NOISE_STD)
+
+    cov_matrix = compute_cov_matrix_vectorized_SE(t, ℓ, σ_SE, σ_noise)
+    z = model_nl8(t, c_vT, c_v, c_θh, c_P, c, y0, s0, b, v, θh, P)
+    
+    @trace(mvnormal(z, cov_matrix), :ys)
+    return 1
+end
+
 @gen (static) function unfold_v_noewma(t::Int, raw_v::Array{Float64})
     v_0 = -mean(raw_v)/std(raw_v)
     std_v = zstd(raw_v)
@@ -257,7 +284,9 @@ end
 Gen.@load_generated_functions
 
 function get_free_params(trace, model)
-    if model == :nl10c
+    if model == :nl10d
+        return [trace[:c_vT], trace[:c_v], trace[:c_θh], trace[:c_P], 0., trace[:y0], trace[:s0], trace[:b], trace[:ℓ0], trace[:σ0_SE], trace[:σ0_noise]]
+    elseif model == :nl10c
         return [trace[:c_vT], trace[:c_v], trace[:c_θh], trace[:c_P], trace[:c], trace[:y0], trace[:s0], trace[:b], trace[:ℓ0], trace[:σ0_SE], trace[:σ0_noise]]
     elseif model == :nl10
         return [trace[:c_vT], trace[:c_v], trace[:c_θh], trace[:c_P], trace[:c], trace[:y0], trace[:s0], trace[:b], trace[:α0], trace[:ℓ0], trace[:σ0_RQ], trace[:σ0_noise]]
