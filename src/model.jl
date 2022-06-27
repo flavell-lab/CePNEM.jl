@@ -5,10 +5,8 @@ lesser(x,x0) = leaky_logistic(x0,x,50,1e-3)
 
 const s_MEAN = 10
 const σ_MEAN = 0.25
-const v_STD = 0.06030961137253011
-const vT_STD = 0.9425527026496543
-const θh_STD = 0.49429038957075727
-const P_STD = 1.2772001409506841
+
+# v_STD, vT_STD, θh_STD, P_STD are defined in FlavellConstants.jl
 
 const ℓ_MEAN = 20
 const ℓ_STD = 1
