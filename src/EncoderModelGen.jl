@@ -8,6 +8,8 @@ using StatsBase
 using Distributions
 using LinearAlgebra
 using MultivariateStats
+using FlavellConstants
+using ANTSUNData
 
 include("fit.jl")
 include("model.jl")
