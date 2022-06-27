@@ -13,13 +13,9 @@ using ANTSUNData
 
 include("fit.jl")
 include("model.jl")
-include("data.jl")
 include("sbc_tests.jl")
 
 export
-    # data.jl
-    import_data,
-
     # model.jl
     s_MEAN,
     σ_MEAN,
