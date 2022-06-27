@@ -23,10 +23,6 @@ export
     # model.jl
     s_MEAN,
     σ_MEAN,
-    v_STD,
-    vT_STD,
-    θh_STD,
-    P_STD,
     ℓ_MEAN,
     ℓ_STD,
     α_MEAN,
