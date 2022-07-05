@@ -8,23 +8,17 @@ using StatsBase
 using Distributions
 using LinearAlgebra
 using MultivariateStats
+using FlavellConstants
+using ANTSUNData
 
 include("fit.jl")
 include("model.jl")
-include("data.jl")
 include("sbc_tests.jl")
 
 export
-    # data.jl
-    import_data,
-
     # model.jl
     s_MEAN,
     σ_MEAN,
-    v_STD,
-    vT_STD,
-    θh_STD,
-    P_STD,
     ℓ_MEAN,
     ℓ_STD,
     α_MEAN,
