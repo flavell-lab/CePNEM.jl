@@ -8,23 +8,17 @@ using StatsBase
 using Distributions
 using LinearAlgebra
 using MultivariateStats
+using FlavellConstants
+using ANTSUNData
 
 include("fit.jl")
 include("model.jl")
-include("data.jl")
 include("sbc_tests.jl")
 
 export
-    # data.jl
-    import_data,
-
     # model.jl
     s_MEAN,
     σ_MEAN,
-    v_STD,
-    vT_STD,
-    θh_STD,
-    P_STD,
     ℓ_MEAN,
     ℓ_STD,
     α_MEAN,
@@ -63,8 +57,9 @@ export
     particle_filter_incremental,
     output_state,
     mcmc,
-    run_mcmc_10c,
-    nl10c_traces_to_params
+    run_mcmc_10,
+    nl10c_traces_to_params,
+    nl10d_traces_to_params,
 
     # sbc_tests.jl
     rank_test,
