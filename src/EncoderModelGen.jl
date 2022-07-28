@@ -37,6 +37,7 @@ export
     nl9,
     nl10,
     nl10c,
+    nl10d,
     unfold_v_noewma,
     unfold_v,
     get_free_params,
