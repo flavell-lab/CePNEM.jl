@@ -178,15 +178,18 @@ function run_mcmc_10(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1,
     cmap[:ys] = ys
 
     println("Initializing MCMC chain...")
+    flush(stdout)
     @time for i=1:n_init
         traces_init[i], _ = (model == :nl10c) ? generate(nl10c, (max_t,v,θh,P), cmap) : generate(nl10d, (max_t,v,θh,P), cmap)
         scores_init[i] = get_score(traces_init[i])
     end
-
+    flush(stdout)
+                    
     traces_sorted = traces_init[sort(1:n_init, by=x->scores_init[x])]
     traces_fit[1] = traces_sorted[end]
 
     println("Iterating MCMC chain...")
+    flush(stdout)
     @time for i=1:n_iters
         traces_fit[i+1], accept[i+1,1] = mh(traces_fit[i], drift_ℓ, (max_t, δ_vals[i,1]))
         traces_fit[i+1], accept[i+1,2] = mh(traces_fit[i+1], drift_σ_SE, (max_t, δ_vals[i,2]))
@@ -206,7 +209,7 @@ function run_mcmc_10(ys, v, θh, P; n_init=100000, n_iters=11000, lr_adjust=1.1,
         neg_c_v = rand([-1,1])
         (traces_fit[i+1], accept[i+1,7]) = mh(traces_fit[i+1], jump_c_vvT, (neg_c_vT, neg_c_v, μ_vT, σ_vT, (model == :nl10c)))
     end
-
+    flush(stdout)
     return traces_fit, accept, δ_vals
 end
 
