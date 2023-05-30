@@ -1,4 +1,4 @@
-module EncoderModelGen
+module CePNEM
 
 using Gen
 using FlavellBase

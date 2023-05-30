@@ -1,8 +1,8 @@
-# EncoderModelGen.jl
+# CePNEM.jl
 Model of neural encoding of behavior, together with `Gen.jl` tools to fit it.
 
 ## Usage  
-Here's an example to fit the model `nl10d`.
+Here's an example to fit the latest model (`nl10d`).
 
 Example only: the data loading parts are examples and should be modified for actual computation.
 ```julia
