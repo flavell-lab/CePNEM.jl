@@ -308,6 +308,22 @@ end
 
 Gen.@load_generated_functions
 
+"""
+    get_free_params(trace, model)
+
+Extracts the free parameters from a trace of a generative model.
+
+Arguments:
+- `trace`: A trace of a generative model.
+- `model`: A symbol representing the name of the generative model.
+
+Returns:
+- An array of the free parameters of the generative model.
+
+The `get_free_params` method takes a trace of a generative model and a symbol representing the name of the generative model as arguments.
+It then extracts the free parameters from the trace and returns them as an array.
+The number and names of the free parameters depend on the generative model, but for model NL10d there are 11.
+"""
 function get_free_params(trace, model)
     if model == :nl10d
         return [trace[:c_vT], trace[:c_v], trace[:c_θh], trace[:c_P], 0., trace[:y0], trace[:s0], trace[:b], trace[:ℓ0], trace[:σ0_SE], trace[:σ0_noise]]

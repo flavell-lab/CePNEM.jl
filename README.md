@@ -12,8 +12,10 @@ The *C. elegans* Probabilistic Neural Encoding Model, together with `Gen.jl` too
 
 ## Citation
 
-Brain-wide representations of behavior spanning multiple timescales and states in C. elegans
+Brain-wide representations of behavior spanning multiple timescales and states in *C. elegans*
+
 Adam A. Atanas*, Jungsoo Kim*, Ziyu Wang, Eric Bueno, McCoy Becker, Di Kang, Jungyeon Park, Cassi Estrem, Talya S. Kramer, Saba Baskoylu, Vikash K. Mansinghka, Steven W. Flavell
+
 bioRxiv 2022.11.11.516186; doi: https://doi.org/10.1101/2022.11.11.516186
 
 \* equal contribution
