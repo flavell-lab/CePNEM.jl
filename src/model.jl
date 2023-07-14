@@ -211,6 +211,33 @@ end
     return 1
 end
 
+"""
+    function nl10d(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
+
+This function is a probabilistic model that generates a time series of neural data `ys` given the input data `v`, `θh`, and `P`.
+
+# Arguments
+- `t::Int`: The number of time points in the time series.
+- `v::Array{Float64}`: An array of length `t` representing the worm's velocity.
+- `θh::Array{Float64}`: An array of length `t` representing the worm's head curvature.
+- `P::Array{Float64}`: An array of length `t` representing the worm's pumping (feeding).
+
+# Returns
+- `1`: A constant value indicating that the function has finished executing.
+
+# Internal Variables
+- `c_vT`: A scalar variable representing the locomotion direction rectification parameter.
+- `c_v`: A scalar variable representing the velocity coefficient.
+- `c_θh`: A scalar variable representing the head curvature coefficient.
+- `c_P`: A scalar variable representing the pumping coefficient.
+- `c`: A scalar variable representing the constant rectification term. This is disabled (set to 0) in `NL10d`.
+- `y0`: A scalar variable representing the initial observation.
+- `s0`: A scalar variable representing the timescale parameter of the neuron's encoding to behavior.
+- `b`: A scalar variable representing the bias term.
+- `ℓ0`: A scalar variable representing the timescale of the residual Gaussian process model.
+- `σ0_SE`: A scalar variable representing the standard deviation of the squared exponential kernel in the residual Gaussian process model.
+- `σ0_noise`: A scalar variable representing the standard deviation of the observation noise (modeled as white noise).
+"""
 @gen function nl10d(t::Int, v::Array{Float64}, θh::Array{Float64}, P::Array{Float64})
     v_0 = 0.0
 
